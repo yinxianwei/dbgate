@@ -1362,7 +1362,9 @@
 
   function handleGridWheel(event) {
     if (event.shiftKey) {
-      scrollHorizontal(event.deltaY, event.deltaX);
+      const shiftConvert = !isMac();
+      const [dx, dy] = shiftConvert ? [event.deltaY, event.deltaX] : [event.deltaX, event.deltaY];
+      scrollHorizontal(dx, dy);
     } else {
       scrollHorizontal(event.deltaX, event.deltaY);
       scrollVertical(event.deltaX, event.deltaY);
