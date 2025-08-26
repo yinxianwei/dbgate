@@ -15,10 +15,13 @@ But there are also many advanced features like schema compare, visual query desi
 DbGate is licensed under GPL-3.0 license and is free to use for any purpose.
 
 * Try it online - [demo.dbgate.org](https://demo.dbgate.org) - online demo application
-* **Download** application for Windows, Linux or Mac from [dbgate.org](https://dbgate.org/download/)
+* **Download** application for Windows, Linux or Mac from [dbgate.io](https://dbgate.io/download/)
+* Looking for DbGate Community? **Download** from [dbgate.org](https://dbgate.org/download/)
 * Run web version as [NPM package](https://www.npmjs.com/package/dbgate-serve) or as [docker image](https://hub.docker.com/r/dbgate/dbgate)
-* Use nodeJs [scripting interface](https://dbgate.org/docs/scripting) ([API documentation](https://dbgate.org/docs/apidoc))
+* Use nodeJs [scripting interface](https://docs.dbgate.io/scripting) ([API documentation](https://docs.dbgate.io/apidoc))
 * [Recommend DbGate](https://testimonial.to/dbgate) | [Rate on G2](https://www.g2.com/products/dbgate/reviews)
+* [Give us feedback](https://dbgate.org/feedback) - it will help us to decide, how to improve DbGate in future
+* We [offer 2-year PREMIUM license](https://dbgate.org/review/) for any honest review on these platforms (time-limited offer)
 
 ## Supported databases
 * MySQL
@@ -34,8 +37,10 @@ DbGate is licensed under GPL-3.0 license and is free to use for any purpose.
 * CosmosDB (Premium)
 * ClickHouse
 * Apache Cassandra
-
-<!-- Learn more about DbGate features at the [DbGate website](https://dbgate.org/), or try our online [demo application](https://demo.dbgate.org) -->
+* libSQL/Turso (Premium)
+* DuckDB
+* Firebird
+* Firestore (Premium)
 
 
 <a href="https://raw.githubusercontent.com/dbgate/dbgate/master/img/screenshot1.png">
@@ -78,6 +83,7 @@ DbGate is licensed under GPL-3.0 license and is free to use for any purpose.
 * Archives - backup your data in NDJSON files on local filesystem (or on DbGate server, when using web application)
 * NDJSON data viewer and editor - browse NDJSON data, edit data and structure directly on NDJSON files. Works also for big NDSON files
 * Charts, export chart to HTML page
+* AI powered database chat
 * Show GEO data on map, export map to HTML page
 * For detailed info, how to run DbGate in docker container, visit [docker hub](https://hub.docker.com/r/dbgate/dbgate)
 * Extensible plugin architecture
@@ -86,11 +92,13 @@ DbGate is licensed under GPL-3.0 license and is free to use for any purpose.
 Any contributions are welcome. If you want to contribute without coding, consider following:
 
 * Tell your friends about DbGate or share on social networks - when more people will use DbGate, it will grow to be better
-* Write review on [Slant.co](https://www.slant.co/improve/options/41086/~dbgate-review) or [G2](https://www.g2.com/products/dbgate/reviews) 
+* Purchase a [DbGate Premium](https://dbgate.io/purchase/premium/) liocense
+* Write review on [Product Hunt](https://www.producthunt.com/products/dbgate) or [G2](https://www.g2.com/products/dbgate/reviews) - we offer [2-year PREMIUM license](https://dbgate.org/review/) for reviewers (time limited offer)
 * Create issue, if you find problem in app, or you have idea to new feature. If issue already exists, you could leave comment on it, to prioritise most wanted issues
 * Create some tutorial video on [youtube](https://www.youtube.com/playlist?list=PLCo7KjCVXhr0RfUSjM9wJMsp_ShL1q61A)
 * Become a backer on [GitHub sponsors](https://github.com/sponsors/dbgate) or [Open collective](https://opencollective.com/dbgate)
-* Where a small coding is acceptable for you, you could [create plugin](https://dbgate.org/docs/plugin-development). Plugins for new themes can be created actually without JS coding
+* Add a SQL script to [Public Knowledge Base](https://github.com/dbgate/dbgate-knowledge-base)
+* Where a small coding is acceptable for you, you could [create plugin](https://docs.dbgate.io/plugin-development). Plugins for new themes can be created actually without JS coding
 
 Thank you!
 

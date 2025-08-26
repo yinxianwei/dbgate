@@ -11,4 +11,13 @@
   }
 </script>
 
-<CheckboxField {...$$restProps} checked={$values[name] ?? defaultValue} on:change={handleChange} on:change />
+<CheckboxField
+  {...$$restProps}
+  checked={$values?.[name] == 0 || $values?.[name] == 'false'
+    ? false
+    : $values?.[name] == '1' || $values?.[name] == 'true'
+      ? true
+      : ($values?.[name] ?? defaultValue)}
+  on:change={handleChange}
+  on:change
+/>

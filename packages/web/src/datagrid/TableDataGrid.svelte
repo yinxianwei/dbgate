@@ -20,6 +20,7 @@
     useDatabaseInfo,
     useDatabaseServerVersion,
     useServerVersion,
+    useSettings,
     useUsedApps,
   } from '../utility/metadataLoaders';
 
@@ -47,12 +48,15 @@
 
   export let isRawMode = false;
 
+  export let forceReadOnly = false;
+
   $: connection = useConnectionInfo({ conid });
   $: dbinfo = useDatabaseInfo({ conid, database });
   $: serverVersion = useDatabaseServerVersion({ conid, database });
   $: apps = useUsedApps();
   $: extendedDbInfo = extendDatabaseInfoFromApps($dbinfo, $apps);
   $: connections = useConnectionList();
+  const settingsValue = useSettings();
 
   // $: console.log('serverVersion', $serverVersion);
 
@@ -73,8 +77,12 @@
           { showHintColumns: getBoolSettingsValue('dataGrid.showHintColumns', true) },
           $serverVersion,
           table => getDictionaryDescription(table, conid, database, $apps, $connections),
-          $connection?.isReadOnly,
-          isRawMode
+          forceReadOnly ||
+            $connection?.isReadOnly ||
+            extendedDbInfo?.tables?.find(x => x.pureName == pureName && x.schemaName == schemaName)
+              ?.tablePermissionRole == 'read',
+          isRawMode,
+          $settingsValue
         )
       : null;
 
@@ -161,7 +169,7 @@
       formViewComponent={SqlFormView}
       {display}
       showReferences
-      showMacros={!$connection?.isReadOnly}
+      showMacros={!forceReadOnly && !$connection?.isReadOnly}
       hasMultiColumnFilter
       onRunMacro={handleRunMacro}
       macroCondition={macro => macro.type == 'transformValue'}

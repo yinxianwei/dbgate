@@ -67,7 +67,10 @@
       const count = getOpenedTabs().filter(closeCondition).length;
       if (count > 0) {
         showModal(ConfirmModal, {
-          message: `Closing connection will close ${count} opened tabs, continue?`,
+          message: _t('connection.closeConfirm', {
+            defaultMessage: 'Closing connection will close {count} opened tabs, continue?',
+            values: { count },
+          }),
           onConfirm: () => disconnectServerConnection(conid, false),
         });
         return;
@@ -105,6 +108,7 @@
   import _ from 'lodash';
   import AppObjectCore from './AppObjectCore.svelte';
   import {
+    cloudSigninTokenHolder,
     currentDatabase,
     DEFAULT_CONNECTION_SEARCH_SETTINGS,
     expandedConnections,
@@ -129,7 +133,6 @@
   import { getDatabaseList, useUsedApps } from '../utility/metadataLoaders';
   import { getLocalStorage } from '../utility/storageCache';
   import { apiCall, removeVolatileMapping } from '../utility/api';
-  import ImportDatabaseDumpModal from '../modals/ImportDatabaseDumpModal.svelte';
   import { closeMultipleTabs } from '../tabpanel/TabsPanel.svelte';
   import AboutModal from '../modals/AboutModal.svelte';
   import { tick } from 'svelte';
@@ -137,6 +140,8 @@
   import hasPermission from '../utility/hasPermission';
   import { switchCurrentDatabase } from '../utility/common';
   import { getConnectionClickActionSetting } from '../settings/settingsTools';
+  import { _t } from '../translations';
+  import { isProApp } from '../utility/proTools';
 
   export let data;
   export let passProps;
@@ -156,7 +161,7 @@
   const handleOpenConnectionTab = () => {
     openNewTab({
       title: getConnectionLabel(data),
-      icon: 'img connection',
+      icon: data._id.startsWith('cloud://') ? 'img cloud-connection' : 'img connection',
       tabComponent: 'ConnectionTab',
       props: {
         conid: data._id,
@@ -227,9 +232,14 @@
     });
   };
 
-  const handleSqlRestore = () => {
-    showModal(ImportDatabaseDumpModal, {
-      connection: data,
+  const handleRestoreDatabase = () => {
+    openNewTab({
+      title: 'Restore #',
+      icon: 'img db-restore',
+      tabComponent: 'RestoreDatabaseTab',
+      props: {
+        conid: data._id,
+      },
     });
   };
 
@@ -244,22 +254,29 @@
     };
     const handleDelete = () => {
       showModal(ConfirmModal, {
-        message: `Really delete connection ${getConnectionLabel(data)}?`,
+        message: _t('connection.deleteConfirm', {
+          defaultMessage: 'Really delete connection {name}?',
+          values: { name: getConnectionLabel(data) },
+        }),
         onConfirm: () => apiCall('connections/delete', data),
       });
     };
     const handleDuplicate = () => {
-      apiCall('connections/save', {
-        ...data,
-        _id: undefined,
-        displayName: `${getConnectionLabel(data)} - copy`,
-      });
+      if (data._id.startsWith('cloud://')) {
+        apiCall('cloud/duplicate-connection', { conid: data._id });
+      } else {
+        apiCall('connections/save', {
+          ...data,
+          _id: undefined,
+          displayName: `${getConnectionLabel(data)} - copy`,
+        });
+      }
     };
     const handleCreateDatabase = () => {
       showModal(InputTextModal, {
-        header: 'Create database',
+        header: _t('connection.createDatabase', { defaultMessage: 'Create database' }),
         value: 'newdb',
-        label: 'Database name',
+        label: _t('connection.databaseName', { defaultMessage: 'Database name' }),
         onConfirm: name =>
           apiCall('server-connections/create-database', {
             conid: data._id,
@@ -294,12 +311,12 @@
     return [
       !data.singleDatabase && [
         !$openedConnections.includes(data._id) && {
-          text: 'Connect',
+          text: _t('connection.connect', { defaultMessage: 'Connect' }),
           onClick: handleConnect,
           isBold: true,
         },
         $openedConnections.includes(data._id) && {
-          text: 'Disconnect',
+          text: _t('connection.disconnect', { defaultMessage: 'Disconnect' }),
           onClick: handleDisconnect,
         },
       ],
@@ -307,35 +324,53 @@
       config.runAsPortal == false &&
         !config.storageDatabase && [
           {
-            text: $openedConnections.includes(data._id) ? 'View details' : 'Edit',
+            text: $openedConnections.includes(data._id)
+              ? _t('connection.viewDetails', { defaultMessage: 'View details' })
+              : _t('connection.edit', { defaultMessage: 'Edit' }),
             onClick: handleOpenConnectionTab,
           },
           !$openedConnections.includes(data._id) && {
-            text: 'Delete',
+            text: _t('connection.delete', { defaultMessage: 'Delete' }),
             onClick: handleDelete,
           },
           {
-            text: 'Duplicate',
+            text: _t('connection.duplicate', { defaultMessage: 'Duplicate' }),
             onClick: handleDuplicate,
           },
+          $cloudSigninTokenHolder &&
+            passProps?.cloudContentList?.length > 0 && {
+              text: _t('connection.copyToCloudFolder', { defaultMessage: 'Copy to cloud folder' }),
+              submenu: passProps?.cloudContentList
+                ?.filter(x => x.role == 'write' || x.role == 'admin')
+                ?.map(fld => ({
+                  text: fld.name,
+                  onClick: () => {
+                    apiCall('cloud/copy-connection-cloud', { conid: data._id, folid: fld.folid });
+                  },
+                })),
+            },
         ],
       { divider: true },
       !data.singleDatabase && [
-        hasPermission(`dbops/query`) && { onClick: handleNewQuery, text: 'New Query (server)', isNewQuery: true },
+        hasPermission(`dbops/query`) && {
+          onClick: handleNewQuery,
+          text: _t('connection.newQuery', { defaultMessage: 'New Query (server)' }),
+          isNewQuery: true,
+        },
         $openedConnections.includes(data._id) &&
           data.status && {
-            text: 'Refresh',
+            text: _t('connection.refresh', { defaultMessage: 'Refresh' }),
             onClick: handleRefresh,
           },
         hasPermission(`dbops/createdb`) &&
           $openedConnections.includes(data._id) &&
           driver?.supportedCreateDatabase &&
           !data.isReadOnly && {
-            text: 'Create database',
+            text: _t('connection.createDatabase', { defaultMessage: 'Create database' }),
             onClick: handleCreateDatabase,
           },
         driver?.supportsServerSummary && {
-          text: 'Server summary',
+          text: _t('connection.serverSummary', { defaultMessage: 'Server summary' }),
           onClick: handleServerSummary,
         },
       ],
@@ -347,12 +382,15 @@
           $extensions,
           $currentDatabase,
           $apps,
-          $openedSingleDatabaseConnections
+          $openedSingleDatabaseConnections,
+          data.databasePermissionRole,
         ),
       ],
 
-      driver?.databaseEngineTypes?.includes('sql') &&
-        !data.isReadOnly && { onClick: handleSqlRestore, text: 'Restore/import SQL dump' },
+      driver?.supportsDatabaseRestore &&
+        isProApp() &&
+        hasPermission(`dbops/sql-dump/import`) &&
+        !data.isReadOnly && { onClick: handleRestoreDatabase, text: 'Restore database backup' },
     ];
   };
 
@@ -365,7 +403,11 @@
     } else {
       extInfo = data.engine;
       engineStatusIcon = 'img warn';
-      engineStatusTitle = `Engine driver ${data.engine} not found, review installed plugins and change engine in edit connection dialog`;
+      engineStatusTitle = _t('connection.engineDriverNotFound', {
+        defaultMessage:
+          'Engine driver {engine} not found, review installed plugins and change engine in edit connection dialog',
+        values: { engine: data.engine },
+      });
     }
   }
 
@@ -392,7 +434,7 @@
   {...$$restProps}
   {data}
   title={getConnectionLabel(data, { showUnsaved: true })}
-  icon={data.singleDatabase ? 'img database' : 'img server'}
+  icon={data._id.startsWith('cloud://') ? 'img cloud-connection' : data.singleDatabase ? 'img database' : 'img server'}
   isBold={data.singleDatabase
     ? $currentDatabase?.connection?._id == data._id && $currentDatabase?.name == data.defaultDatabase
     : $currentDatabase?.connection?._id == data._id}

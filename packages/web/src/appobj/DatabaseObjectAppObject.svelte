@@ -185,10 +185,6 @@
             isImport: true,
             requiresWriteAccess: true,
           },
-          hasPermission('dbops/charts') && {
-            label: 'Open active chart',
-            isActiveChart: true,
-          },
         ];
       case 'views':
         return [
@@ -245,10 +241,6 @@
             isExport: true,
             functionName: 'tableReader',
           },
-          {
-            label: 'Open active chart',
-            isActiveChart: true,
-          },
         ];
       case 'matviews':
         return [
@@ -298,10 +290,6 @@
             label: 'Export',
             isExport: true,
             functionName: 'tableReader',
-          },
-          {
-            label: 'Open active chart',
-            isActiveChart: true,
           },
         ];
       case 'queries':
@@ -472,28 +460,7 @@
       return driver;
     };
 
-    if (menu.isActiveChart) {
-      const driver = await getDriver();
-      const dmp = driver.createDumper();
-      dmp.put('^select * from %f', data);
-      openNewTab(
-        {
-          title: data.pureName,
-          icon: 'img chart',
-          tabComponent: 'ChartTab',
-          props: {
-            conid: data.conid,
-            database: data.database,
-          },
-        },
-        {
-          editor: {
-            config: { chartType: 'bar' },
-            sql: dmp.s,
-          },
-        }
-      );
-    } else if (menu.isQueryDesigner) {
+    if (menu.isQueryDesigner) {
       openNewTab(
         {
           title: 'Query #',
@@ -736,15 +703,29 @@
   }
 
   function createMenus(objectTypeField, driver, data): ReturnType<typeof createMenusCore> {
-    return createMenusCore(objectTypeField, driver, data).filter(x => {
-      if (x.scriptTemplate) {
-        return hasPermission(`dbops/sql-template/${x.scriptTemplate}`);
+    const coreMenus = createMenusCore(objectTypeField, driver, data);
+
+    const filteredSumenus = coreMenus.map(item => {
+      if (!item.submenu) {
+        return item;
       }
-      if (x.sqlGeneratorProps) {
-        return hasPermission(`dbops/sql-generator`);
-      }
-      return true;
+      return {
+        ...item,
+        submenu: item.submenu.filter(x => {
+          if (x.scriptTemplate) {
+            return hasPermission(`dbops/sql-template/${x.scriptTemplate}`);
+          }
+          if (x.sqlGeneratorProps) {
+            return hasPermission(`dbops/sql-generator`);
+          }
+          return true;
+        }),
+      };
     });
+
+    const filteredNoEmptySubmenus = filteredSumenus.filter(x => !x.submenu || x.submenu.length > 0);
+    
+    return filteredNoEmptySubmenus;
   }
 
   function getObjectTitle(connection, schemaName, pureName) {
@@ -893,9 +874,10 @@
             {
               functionName: menu.functionName,
               props: {
-                connection: extractShellConnection(coninfo, data.database),
+                ...extractShellConnectionHostable(coninfo, data.database),
                 ..._.pick(data, ['pureName', 'schemaName']),
               },
+              hostConnection: extractShellHostConnection(coninfo, data.database),
             },
             fmt
           );
@@ -1031,7 +1013,7 @@
   import { alterDatabaseDialog, renameDatabaseObjectDialog } from '../utility/alterDatabaseTools';
   import ConfirmModal from '../modals/ConfirmModal.svelte';
   import InputTextModal from '../modals/InputTextModal.svelte';
-  import { extractShellConnection } from '../impexp/createImpExpScript';
+  import { extractShellConnectionHostable, extractShellHostConnection } from '../impexp/createImpExpScript';
   import { format as dateFormat } from 'date-fns';
   import { getDefaultFileFormat } from '../plugins/fileformats';
   import hasPermission from '../utility/hasPermission';
@@ -1086,10 +1068,15 @@
   icon={databaseObjectIcons[data.objectTypeField]}
   menu={createMenu}
   showPinnedInsteadOfUnpin={passProps?.showPinnedInsteadOfUnpin}
-  onPin={isPinned ? null : () => pinnedTables.update(list => [...list, data])}
-  onUnpin={isPinned ? () => pinnedTables.update(list => list.filter(x => !testEqual(x, data))) : null}
+  onPin={passProps?.ingorePin ? null : isPinned ? null : () => pinnedTables.update(list => [...list, data])}
+  onUnpin={passProps?.ingorePin
+    ? null
+    : isPinned
+      ? () => pinnedTables.update(list => list.filter(x => !testEqual(x, data)))
+      : null}
   extInfo={getExtInfo(data)}
   isChoosed={matchDatabaseObjectAppObject($selectedDatabaseObjectAppObject, data)}
+  statusIconBefore={data.tablePermissionRole == 'read' ? 'icon lock' : null}
   on:click={() => handleObjectClick(data, 'leftClick')}
   on:middleclick={() => handleObjectClick(data, 'middleClick')}
   on:dblclick={() => handleObjectClick(data, 'dblClick')}

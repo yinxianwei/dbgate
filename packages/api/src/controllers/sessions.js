@@ -11,6 +11,8 @@ const { appdir } = require('../utility/directories');
 const { getLogger, extractErrorLogData } = require('dbgate-tools');
 const pipeForkLogs = require('../utility/pipeForkLogs');
 const config = require('./config');
+const { sendToAuditLog } = require('../utility/auditlog');
+const { testStandardPermission, testDatabaseRolePermission } = require('../utility/hasPermission');
 
 const logger = getLogger('sessions');
 
@@ -83,12 +85,17 @@ module.exports = {
     jsldata.notifyChangedStats(stats);
   },
 
+  handle_charts(sesid, props) {
+    const { jslid, charts, resultIndex } = props;
+    socket.emit(`session-charts-${sesid}`, { jslid, resultIndex, charts });
+  },
+
   handle_initializeFile(sesid, props) {
     const { jslid } = props;
     socket.emit(`session-initialize-file-${jslid}`);
   },
 
-  handle_ping() {},
+  handle_ping() { },
 
   create_meta: true,
   async create({ conid, database }) {
@@ -127,6 +134,9 @@ module.exports = {
       this.dispatchMessage(sesid, 'Query session closed');
       socket.emit(`session-closed-${sesid}`);
     });
+    subprocess.on('error', () => {
+      this.opened = this.opened.filter(x => x.sesid != sesid);
+    });
 
     subprocess.send({
       msgtype: 'connect',
@@ -138,15 +148,36 @@ module.exports = {
   },
 
   executeQuery_meta: true,
-  async executeQuery({ sesid, sql, autoCommit }) {
+  async executeQuery({ sesid, sql, autoCommit, autoDetectCharts, limitRows, frontMatter }, req) {
+    await testStandardPermission('dbops/query', req);
     const session = this.opened.find(x => x.sesid == sesid);
     if (!session) {
       throw new Error('Invalid session');
     }
+    await testDatabaseRolePermission(session.conid, session.database, 'run_script', req);
 
-    logger.info({ sesid, sql }, 'Processing query');
+    sendToAuditLog(req, {
+      category: 'dbop',
+      component: 'SessionController',
+      action: 'executeQuery',
+      event: 'query.execute',
+      severity: 'info',
+      detail: sql,
+      conid: session.conid,
+      database: session.database,
+      message: 'Executing query',
+    });
+
+    logger.info({ sesid, sql }, 'DBGM-00019 Processing query');
     this.dispatchMessage(sesid, 'Query execution started');
-    session.subprocess.send({ msgtype: 'executeQuery', sql, autoCommit });
+    session.subprocess.send({
+      msgtype: 'executeQuery',
+      sql,
+      autoCommit,
+      autoDetectCharts: autoDetectCharts || !!frontMatter?.['selected-chart'],
+      limitRows,
+      frontMatter,
+    });
 
     return { state: 'ok' };
   },
@@ -158,7 +189,7 @@ module.exports = {
       throw new Error('Invalid session');
     }
 
-    logger.info({ sesid, command }, 'Processing control command');
+    logger.info({ sesid, command }, 'DBGM-00020 Processing control command');
     this.dispatchMessage(sesid, `${_.startCase(command)} started`);
     session.subprocess.send({ msgtype: 'executeControlCommand', command });
 
@@ -196,7 +227,7 @@ module.exports = {
       throw new Error('Invalid session');
     }
 
-    logger.info({ sesid }, 'Starting profiler');
+    logger.info({ sesid }, 'DBGM-00021 Starting profiler');
     session.loadingReader_jslid = jslid;
     session.subprocess.send({ msgtype: 'startProfiler', jslid });
 
@@ -243,7 +274,7 @@ module.exports = {
     try {
       session.subprocess.send({ msgtype: 'ping' });
     } catch (err) {
-      logger.error(extractErrorLogData(err), 'Error pinging session');
+      logger.error(extractErrorLogData(err), 'DBGM-00145 Error pinging session');
 
       return {
         status: 'error',

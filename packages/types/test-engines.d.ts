@@ -31,7 +31,7 @@ export type TestEngineInfo = {
   skipUnique?: boolean;
   skipAutoIncrement?: boolean;
   skipPkColumnTesting?: boolean;
-  skipDataDuplicator?: boolean;
+  skipDataReplicator?: boolean;
   skipDeploy?: boolean;
   skipStringLength?: boolean;
   skipChangeColumn?: boolean;
@@ -40,14 +40,24 @@ export type TestEngineInfo = {
   skipPkDrop?: boolean;
   skipOrderBy?: boolean;
   skipImportModel?: boolean;
+  skipTriggers?: boolean;
+  skipDropColumn?: boolean;
+  skipChangeNullability?: boolean;
+  skipRenameColumn?: boolean;
+  skipDropReferences?: boolean;
+  skipRenameTable?: boolean;
 
   forceSortResults?: boolean;
   forceSortStructureColumns?: boolean;
   alterTableAddColumnSyntax?: boolean;
   dbSnapshotBySeconds?: boolean;
   setNullDefaultInsteadOfDrop?: boolean;
+  runDeployInTransaction?: boolean;
 
   useTextTypeForStrings?: boolean;
+
+  supportTableComments?: boolean;
+  supportColumnComments?: boolean;
 
   supportRenameSqlObject?: boolean;
   supportSchemas?: boolean;
@@ -55,6 +65,8 @@ export type TestEngineInfo = {
   defaultSchemaName?: string;
 
   generateDbFile?: boolean;
+  generateDbFileOnServer?: boolean;
+  databaseFileLocationOnServer?: string;
   dbSnapshotBySeconds?: boolean;
   dumpFile?: string;
   dumpChecks?: Array<{ sql: string; res: string }>;

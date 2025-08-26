@@ -3,6 +3,7 @@
   import FontIcon from '../icons/FontIcon.svelte';
   import Link from './Link.svelte';
   import TableControl from './TableControl.svelte';
+  import { writable } from 'svelte/store';
 
   export let title;
   export let collection;
@@ -12,8 +13,17 @@
   export let hideDisplayName = false;
   export let clickable = false;
   export let onAddNew = null;
+  export let displayNameFieldName = null;
+  export let multipleItemsActions = null;
+
+  export let filters = writable({});
 
   let collapsed = false;
+  let activeMultipleSelection;
+
+  function handleChangeMultipleSelection(list) {
+    activeMultipleSelection = list;
+  }
 </script>
 
 {#if collection?.length > 0 || showIfEmpty || emptyMessage}
@@ -31,6 +41,16 @@
       {#if onAddNew}
         <Link onClick={onAddNew}><FontIcon icon="icon add" /> Add new</Link>
       {/if}
+      {#if multipleItemsActions && activeMultipleSelection && activeMultipleSelection?.length > 0}
+        {#each multipleItemsActions as item}
+          <span class="ml-2">
+            <Link onClick={() => item.onClick(activeMultipleSelection)}>
+              <FontIcon icon={item.icon} />
+              {item.text} ({activeMultipleSelection.length})
+            </Link>
+          </span>
+        {/each}
+      {/if}
     </div>
     {#if (collection?.length || 0) == 0 && emptyMessage}
       <div class="body">
@@ -41,17 +61,21 @@
       <div class="body">
         <TableControl
           rows={collection || []}
+          allowMultiSelect={!!multipleItemsActions}
           columns={_.compact([
             !hideDisplayName && {
-              fieldName: 'displayName',
+              fieldName: displayNameFieldName || 'displayName',
               header: 'Name',
               slot: -1,
               sortable: true,
+              filterable: !!displayNameFieldName,
             },
             ...columns,
           ])}
           {clickable}
+          {filters}
           on:clickrow
+          onChangeMultipleSelection={handleChangeMultipleSelection}
         >
           <svelte:fragment slot="-1" let:row let:col>
             <slot name="name" {row} {col} />

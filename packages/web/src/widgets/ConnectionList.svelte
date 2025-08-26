@@ -248,6 +248,7 @@
       handleDropOnGroup(data, '');
     }
   }}
+  data-testid="ConnectionList_container"
 >
   <AppObjectListHandler
     bind:this={domListHandler}
@@ -350,6 +351,7 @@
       isExpandable={data => $openedConnections.includes(data._id) && !data.singleDatabase}
       {filter}
       passProps={{
+        ...passProps,
         connectionColorFactory: $connectionColorFactory,
         showPinnedInsteadOfUnpin: true,
         searchSettings: $connectionAppObjectSearchSettings,

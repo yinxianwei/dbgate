@@ -39,7 +39,7 @@ jobs:
           repository: dbgate/dbgate-pro
           token: ${{ secrets.GH_TOKEN }}
           path: dbgate-pro
-          ref: 21048330597124a88fa1b8447e0bc18666eb69c5
+          ref: 3438c79611bf9825cc6406c4fb7adf0c7063902d
       - name: Merge dbgate/dbgate-pro
         run: |
           mkdir ../dbgate-pro
@@ -123,6 +123,7 @@ jobs:
           cp ../dbgate-merged/app/dist/*win*.exe artifacts/dbgate-premium-latest.exe || true
           cp ../dbgate-merged/app/dist/*win_x64.zip artifacts/dbgate-windows-premium-latest.zip || true
           cp ../dbgate-merged/app/dist/*win_arm64.zip artifacts/dbgate-windows-premium-latest-arm64.zip || true
+          cp ../dbgate-merged/app/dist/*win_arm64.exe artifacts/dbgate-windows-premium-latest-arm64.exe || true
           cp ../dbgate-merged/app/dist/*-mac_universal.dmg artifacts/dbgate-premium-latest.dmg || true
           cp ../dbgate-merged/app/dist/*-mac_x64.dmg artifacts/dbgate-premium-latest-x64.dmg || true
           cp ../dbgate-merged/app/dist/*-mac_arm64.dmg artifacts/dbgate-premium-latest-arm64.dmg || true

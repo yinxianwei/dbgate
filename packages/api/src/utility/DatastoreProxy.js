@@ -60,6 +60,10 @@ class DatastoreProxy {
         // if (this.disconnected) return;
         this.subprocess = null;
       });
+      this.subprocess.on('error', err => {
+        logger.error(extractErrorLogData(err), 'DBGM-00167 Error in data store subprocess');
+        this.subprocess = null;
+      });
       this.subprocess.send({ msgtype: 'open', file: this.file });
     }
     return this.subprocess;
@@ -73,7 +77,7 @@ class DatastoreProxy {
       try {
         this.subprocess.send({ msgtype: 'read', msgid, offset, limit });
       } catch (err) {
-        logger.error(extractErrorLogData(err), 'Error getting rows');
+        logger.error(extractErrorLogData(err), 'DBGM-00168 Error getting rows');
         this.subprocess = null;
       }
     });
@@ -87,7 +91,7 @@ class DatastoreProxy {
       try {
         this.subprocess.send({ msgtype: 'notify', msgid });
       } catch (err) {
-        logger.error(extractErrorLogData(err), 'Error notifying subprocess');
+        logger.error(extractErrorLogData(err), 'DBGM-00169 Error notifying subprocess');
         this.subprocess = null;
       }
     });

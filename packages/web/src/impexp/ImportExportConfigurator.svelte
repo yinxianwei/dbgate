@@ -82,6 +82,7 @@
   // export let openedFile = undefined;
   export let previewReaderStore;
   export let isTabActive;
+  export let isRunning = false;
 
   const { values, setFieldValue } = getFormContext();
 
@@ -273,6 +274,7 @@
                     // @ts-ignore
                     e.target.value
                   )}
+                data-testid={`ImportExportConfigurator_targetName_${row}`}
               />
               {#if $targetDbinfo}
                 <DropDownButton
@@ -298,14 +300,17 @@
                   initialValue: $values[`columns_${row}`],
                   sourceTableInfo: $sourceDbinfo?.tables?.find(x => x.pureName?.toLowerCase() == row?.toLowerCase()),
                   targetTableInfo: $targetDbinfo?.tables?.find(x => x.pureName?.toLowerCase() == targetNameLower),
-                  onConfirm: value => setFieldValue(`columns_${row}`, value),
+                  onConfirm: value => {
+                    setFieldValue(`columns_${row}`, value);
+                    targetEditKey += 1;
+                  },
                 });
               }}
               >{columnCount > 0 ? `(${columnCount} columns)` : '(copy from source)'}
             </Link>
           </svelte:fragment>
           <svelte:fragment slot="3" let:row>
-            {#if progressHolder[row]?.status == 'running'}
+            {#if progressHolder[row]?.status == 'running' && isRunning}
               <FontIcon icon="icon loading" />
               {#if progressHolder[row]?.writtenRowCount}
                 {progressHolder[row]?.writtenRowCount} rows writtem
@@ -322,6 +327,7 @@
                   title={progressHolder[row]?.errorMessage}
                   on:click={() => showModal(ErrorMessageModal, { message: progressHolder[row]?.errorMessage })}
                   style="cursor: pointer"
+                  data-testid={`ImportExportConfigurator_errorInfoIcon_${row}`}
                 />
               {/if}
             {:else if progressHolder[row]?.status == 'done'}
@@ -334,7 +340,14 @@
                 Done
               {/if}
             {:else}
-              <FontIcon icon="icon wait" /> Queued
+              <FontIcon icon="icon wait" />
+              {#if progressHolder[row]?.writtenRowCount}
+                {progressHolder[row]?.writtenRowCount} rows writtem
+              {:else if progressHolder[row]?.readRowCount}
+                {progressHolder[row]?.readRowCount} rows read
+              {:else}
+                Queued
+              {/if}
             {/if}
           </svelte:fragment>
         </TableControl>

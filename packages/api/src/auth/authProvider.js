@@ -11,7 +11,7 @@ const logger = getLogger('authProvider');
 class AuthProviderBase {
   amoid = 'none';
 
-  async login(login, password, options = undefined) {
+  async login(login, password, options = undefined, req = undefined) {
     return {
       accessToken: jwt.sign(
         {
@@ -23,7 +23,7 @@ class AuthProviderBase {
     };
   }
 
-  oauthToken(params) {
+  oauthToken(params, req) {
     return {};
   }
 
@@ -36,12 +36,24 @@ class AuthProviderBase {
     return !!req?.user || !!req?.auth;
   }
 
-  getCurrentPermissions(req) {
+  async getCurrentPermissions(req) {
     const login = this.getCurrentLogin(req);
     const permissions = process.env[`LOGIN_PERMISSIONS_${login}`];
     return permissions || process.env.PERMISSIONS;
   }
 
+  async checkCurrentConnectionPermission(req, conid) {
+    return true;
+  }
+
+  async getCurrentDatabasePermissions(req) {
+    return [];
+  }
+
+  async getCurrentTablePermissions(req) {
+    return [];
+  }
+  
   getLoginPageConnections() {
     return null;
   }
@@ -94,7 +106,7 @@ class OAuthProvider extends AuthProviderBase {
       payload = jwt.decode(id_token);
     }
 
-    logger.info({ payload }, 'User payload returned from OAUTH');
+    logger.info({ payload }, 'DBGM-00002 User payload returned from OAUTH');
 
     const login =
       process.env.OAUTH_LOGIN_FIELD && payload && payload[process.env.OAUTH_LOGIN_FIELD]

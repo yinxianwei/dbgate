@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 const path = require('path');
-const { uploadsdir, getLogsFilePath } = require('../utility/directories');
+const { uploadsdir, getLogsFilePath, filesdir } = require('../utility/directories');
 const { getLogger, extractErrorLogData } = require('dbgate-tools');
 const logger = getLogger('uploads');
 const axios = require('axios');
@@ -13,6 +13,7 @@ const serverConnections = require('./serverConnections');
 const config = require('./config');
 const gistSecret = require('../gistSecret');
 const currentVersion = require('../currentVersion');
+const socket = require('../utility/socket');
 
 module.exports = {
   upload_meta: {
@@ -27,7 +28,7 @@ module.exports = {
     }
     const uploadName = crypto.randomUUID();
     const filePath = path.join(uploadsdir(), uploadName);
-    logger.info(`Uploading file ${data.name}, size=${data.size}`);
+    logger.info(`DBGM-00025 Uploading file ${data.name}, size=${data.size}`);
 
     data.mv(filePath, () => {
       res.json({
@@ -43,6 +44,10 @@ module.exports = {
     raw: true,
   },
   get(req, res) {
+    if (req.query.file.includes('..') || req.query.file.includes('/') || req.query.file.includes('\\')) {
+      res.status(400).send('Invalid file path');
+      return;
+    }
     res.sendFile(path.join(uploadsdir(), req.query.file));
   },
 
@@ -110,7 +115,7 @@ module.exports = {
 
       return response.data;
     } catch (err) {
-      logger.error(extractErrorLogData(err), 'Error uploading gist');
+      logger.error(extractErrorLogData(err), 'DBGM-00148 Error uploading gist');
 
       return {
         apiErrorMessage: err.message,

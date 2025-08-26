@@ -13,10 +13,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Use Node.js 18.x
+      - name: Use Node.js 22.x
         uses: actions/setup-node@v1
         with:
-          node-version: 18.x
+          node-version: 22.x
 
       - uses: actions/checkout@v3
         with:
@@ -41,6 +41,12 @@ jobs:
         if: always()
         run: |
           cd packages/datalib
+          yarn test:ci
+
+      - name: Tools tests
+        if: always()
+        run: |
+          cd packages/tools
           yarn test:ci
 
       - uses: tanmen/jest-reporter@v1
@@ -75,13 +81,13 @@ jobs:
           --health-timeout 5s
           --health-retries 5
         ports:
-          - 15000:5432          
+          - 15000:5432
 
       mysql-integr:
         image: mysql:8.0.18
         env:
           MYSQL_ROOT_PASSWORD: Pwd2020Db
-        ports: 
+        ports:
           - 15001:3306
 
       mssql-integr:
@@ -90,14 +96,14 @@ jobs:
           ACCEPT_EULA: Y
           SA_PASSWORD: Pwd2020Db
           MSSQL_PID: Express
-        ports: 
+        ports:
           - 15002:1433
 
       clickhouse-integr:
         image: bitnami/clickhouse:24.8.4
         env:
           CLICKHOUSE_ADMIN_PASSWORD: Pwd2020Db
-        ports: 
+        ports:
           - 15005:8123
 
       oracle-integr:
@@ -111,3 +117,20 @@ jobs:
         image: cassandra:5.0.2
         ports:
           - 15942:9042
+
+      libsql:
+        image: ghcr.io/tursodatabase/libsql-server:latest
+        ports:
+          - '8080:8080'
+
+      firebird:
+        image: firebirdsql/firebird:latest
+        env:
+          FIREBIRD_DATABASE: mydatabase.fdb
+          FIREBIRD_USER: dbuser
+          FIREBIRD_PASSWORD: dbpassword
+          ISC_PASSWORD: masterkey
+          FIREBIRD_TRACE: false
+          FIREBIRD_USE_LEGACY_AUTH: true
+        ports:
+          - '3050:3050'

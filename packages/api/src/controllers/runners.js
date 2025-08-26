@@ -4,19 +4,24 @@ const path = require('path');
 const fs = require('fs-extra');
 const byline = require('byline');
 const socket = require('../utility/socket');
-const { fork } = require('child_process');
+const { fork, spawn } = require('child_process');
 const { rundir, uploadsdir, pluginsdir, getPluginBackendPath, packagedPluginList } = require('../utility/directories');
 const {
   extractShellApiPlugins,
-  extractShellApiFunctionName,
+  compileShellApiFunctionName,
   jsonScriptToJavascript,
   getLogger,
   safeJsonParse,
   pinoLogRecordToMessageRecord,
+  extractErrorMessage,
+  extractErrorLogData,
 } = require('dbgate-tools');
 const { handleProcessCommunication } = require('../utility/processComm');
 const processArgs = require('../utility/processArgs');
 const platformInfo = require('../utility/platformInfo');
+const { checkSecureDirectories, checkSecureDirectoriesInScript } = require('../utility/security');
+const { sendToAuditLog, logJsonRunnerScript } = require('../utility/auditlog');
+const { testStandardPermission } = require('../utility/hasPermission');
 const logger = getLogger('runners');
 
 function extractPlugins(script) {
@@ -44,7 +49,7 @@ require=null;
 async function run() {
 ${script}
 await dbgateApi.finalizer.run();
-logger.info('Finished job script');
+logger.info('DBGM-00014 Finished job script');
 }
 dbgateApi.runScript(run);
 `;
@@ -56,7 +61,7 @@ dbgateApi.initializeApiEnvironment();
 ${requirePluginsTemplate(extractShellApiPlugins(functionName, props))}
 require=null;
 async function run() {
-const reader=await ${extractShellApiFunctionName(functionName)}(${JSON.stringify(props)});
+const reader=await ${compileShellApiFunctionName(functionName)}(${JSON.stringify(props)});
 const writer=await dbgateApi.collectorWriter({runid: '${runid}'});
 await dbgateApi.copyStream(reader, writer);
 }
@@ -70,7 +75,8 @@ module.exports = {
 
   dispatchMessage(runid, message) {
     if (message) {
-      if (_.isPlainObject(message)) logger.log(message);
+      if (_.isPlainObject(message))
+        logger.log({ ...message, msg: message.msg || message.message || '', message: undefined });
       else logger.info(message);
 
       const toEmit = _.isPlainObject(message)
@@ -80,6 +86,7 @@ module.exports = {
           }
         : {
             message,
+            severity: 'info',
             time: new Date(),
           };
 
@@ -93,9 +100,9 @@ module.exports = {
 
   handle_ping() {},
 
-  handle_freeData(runid, { freeData }) {
+  handle_dataResult(runid, { dataResult }) {
     const { resolve } = this.requests[runid];
-    resolve(freeData);
+    resolve(dataResult);
     delete this.requests[runid];
   },
 
@@ -127,7 +134,7 @@ module.exports = {
     const pluginNames = extractPlugins(scriptText);
     // console.log('********************** SCRIPT TEXT **********************');
     // console.log(scriptText);
-    logger.info({ scriptFile }, 'Running script');
+    logger.info({ scriptFile }, 'DBGM-00015 Running script');
     // const subprocess = fork(scriptFile, ['--checkParent', '--max-old-space-size=8192'], {
     const subprocess = fork(
       scriptFile,
@@ -166,17 +173,19 @@ module.exports = {
     subprocess.on('exit', code => {
       // console.log('... EXITED', code);
       this.rejectRequest(runid, { message: 'No data returned, maybe input data source is too big' });
-      logger.info({ code, pid: subprocess.pid }, 'Exited process');
+      logger.info({ code, pid: subprocess.pid }, 'DBGM-00016 Exited process');
       socket.emit(`runner-done-${runid}`, code);
+      this.opened = this.opened.filter(x => x.runid != runid);
     });
     subprocess.on('error', error => {
       // console.log('... ERROR subprocess', error);
       this.rejectRequest(runid, { message: error && (error.message || error.toString()) });
       console.error('... ERROR subprocess', error);
-      this.dispatchMessage({
+      this.dispatchMessage(runid, {
         severity: 'error',
         message: error.toString(),
       });
+      this.opened = this.opened.filter(x => x.runid != runid);
     });
     const newOpened = {
       runid,
@@ -192,18 +201,119 @@ module.exports = {
     return _.pick(newOpened, ['runid']);
   },
 
+  nativeRunCore(runid, commandArgs) {
+    const { command, args, env, transformMessage, stdinFilePath, onFinished } = commandArgs;
+    const pipeDispatcher = severity => data => {
+      let messageObject = {
+        message: data.toString().trim(),
+        severity,
+      };
+      if (transformMessage) {
+        messageObject = transformMessage(messageObject);
+      }
+
+      if (messageObject) {
+        return this.dispatchMessage(runid, messageObject);
+      }
+    };
+
+    const subprocess = spawn(command, args, { env: { ...process.env, ...env } });
+
+    byline(subprocess.stdout).on('data', pipeDispatcher('info'));
+    byline(subprocess.stderr).on('data', pipeDispatcher('error'));
+
+    subprocess.on('exit', code => {
+      console.log('... EXITED', code);
+      logger.info({ code, pid: subprocess.pid }, 'DBGM-00017 Exited process');
+      this.dispatchMessage(runid, `Finished external process with code ${code}`);
+      socket.emit(`runner-done-${runid}`, code);
+      if (onFinished) {
+        onFinished();
+      }
+      this.opened = this.opened.filter(x => x.runid != runid);
+    });
+    subprocess.on('spawn', () => {
+      this.dispatchMessage(runid, `Started external process ${command}`);
+    });
+    subprocess.on('error', error => {
+      console.log('... ERROR subprocess', error);
+      this.dispatchMessage(runid, {
+        severity: 'error',
+        message: error.toString(),
+      });
+      if (error['code'] == 'ENOENT') {
+        this.dispatchMessage(runid, {
+          severity: 'error',
+          message: `Command ${command} not found, please install it and configure its location in DbGate settings, Settings/External tools, if ${command} is not in system PATH`,
+        });
+      }
+      socket.emit(`runner-done-${runid}`);
+      this.opened = this.opened.filter(x => x.runid != runid);
+    });
+
+    if (stdinFilePath) {
+      const inputStream = fs.createReadStream(stdinFilePath);
+      inputStream.pipe(subprocess.stdin);
+
+      subprocess.stdin.on('error', err => {
+        this.dispatchMessage(runid, {
+          severity: 'error',
+          message: extractErrorMessage(err),
+        });
+        logger.error(extractErrorLogData(err), 'DBGM-00118 Caught error on stdin');
+      });
+    }
+
+    const newOpened = {
+      runid,
+      subprocess,
+    };
+    this.opened.push(newOpened);
+    return _.pick(newOpened, ['runid']);
+  },
+
   start_meta: true,
-  async start({ script }) {
+  async start({ script }, req) {
+    await testStandardPermission('run-shell-script', req);
+    
     const runid = crypto.randomUUID();
 
     if (script.type == 'json') {
-      const js = jsonScriptToJavascript(script);
+      if (!platformInfo.isElectron) {
+        if (!checkSecureDirectoriesInScript(script)) {
+          return { errorMessage: 'Unallowed directories in script' };
+        }
+      }
+
+      logJsonRunnerScript(req, script);
+
+      const js = await jsonScriptToJavascript(script);
       return this.startCore(runid, scriptTemplate(js, false));
     }
 
     if (!platformInfo.allowShellScripting) {
+      sendToAuditLog(req, {
+        category: 'shell',
+        component: 'RunnersController',
+        event: 'script.runFailed',
+        action: 'script',
+        severity: 'warn',
+        detail: script,
+        message: 'Scripts are not allowed',
+      });
+
       return { errorMessage: 'Shell scripting is not allowed' };
     }
+
+    sendToAuditLog(req, {
+      category: 'shell',
+      component: 'RunnersController',
+      event: 'script.run.shell',
+      action: 'script',
+      severity: 'info',
+      detail: script,
+      message: 'Running JS script',
+    });
 
     return this.startCore(runid, scriptTemplate(script, false));
   },
@@ -241,6 +351,11 @@ module.exports = {
 
   loadReader_meta: true,
   async loadReader({ functionName, props }) {
+    if (!platformInfo.isElectron) {
+      if (props?.fileName && !checkSecureDirectories(props.fileName)) {
+        return { errorMessage: 'Unallowed file' };
+      }
+    }
     const prefix = extractShellApiPlugins(functionName)
       .map(packageName => `// @require ${packageName}\n`)
       .join('');
@@ -249,6 +364,26 @@ module.exports = {
       const runid = crypto.randomUUID();
       this.requests[runid] = { resolve, reject, exitOnStreamError: true };
       this.startCore(runid, loaderScriptTemplate(prefix, functionName, props, runid));
+    });
+    return promise;
+  },
+
+  scriptResult_meta: true,
+  async scriptResult({ script }) {
+    if (script.type != 'json') {
+      return { errorMessage: 'Only JSON scripts are allowed' };
+    }
+
+    const promise = new Promise(async (resolve, reject) => {
+      const runid = crypto.randomUUID();
+      this.requests[runid] = { resolve, reject, exitOnStreamError: true };
+      const cloned = _.cloneDeepWith(script, node => {
+        if (node?.$replace == 'runid') {
+          return runid;
+        }
+      });
+      const js = await jsonScriptToJavascript(cloned);
+      this.startCore(runid, scriptTemplate(js, false));
     });
     return promise;
   },

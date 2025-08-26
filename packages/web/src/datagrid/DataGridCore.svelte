@@ -4,7 +4,7 @@
   registerCommand({
     id: 'dataGrid.refresh',
     category: 'Data grid',
-    name: 'Refresh',
+    name: _t('common.refresh', { defaultMessage: 'Refresh' }),
     keyText: 'F5 | CtrlOrCommand+R',
     toolbar: true,
     isRelatedToTab: true,
@@ -28,7 +28,7 @@
   registerCommand({
     id: 'dataGrid.revertRowChanges',
     category: 'Data grid',
-    name: 'Revert row changes',
+    name: _t('command.datagrid.revertRowChanges', { defaultMessage: 'Revert row changes' }),
     keyText: 'CtrlOrCommand+U',
     testEnabled: () => getCurrentDataGrid()?.getGrider()?.containsChanges,
     onClick: () => getCurrentDataGrid().revertRowChanges(),
@@ -37,8 +37,8 @@
   registerCommand({
     id: 'dataGrid.revertAllChanges',
     category: 'Data grid',
-    name: 'Revert all changes',
-    toolbarName: 'Revert all',
+    name: _t('command.datagrid.revertAllChanges', { defaultMessage: 'Revert all changes' }),
+    toolbarName: _t('command.datagrid.revertAllChanges.toolbar', { defaultMessage: 'Revert all' }),
     icon: 'icon undo',
     testEnabled: () => getCurrentDataGrid()?.getGrider()?.containsChanges,
     onClick: () => getCurrentDataGrid().revertAllChanges(),
@@ -47,8 +47,8 @@
   registerCommand({
     id: 'dataGrid.deleteSelectedRows',
     category: 'Data grid',
-    name: 'Delete selected rows',
-    toolbarName: 'Delete row(s)',
+    name: _t('command.datagrid.deleteSelectedRows', { defaultMessage: 'Delete selected rows' }),
+    toolbarName: _t('command.datagrid.deleteSelectedRows.toolbar', { defaultMessage: 'Delete row(s)' }),
     keyText: isMac() ? 'Command+Backspace' : 'CtrlOrCommand+Delete',
     icon: 'icon minus',
     testEnabled: () => getCurrentDataGrid()?.getGrider()?.editable,
@@ -58,8 +58,8 @@
   registerCommand({
     id: 'dataGrid.insertNewRow',
     category: 'Data grid',
-    name: 'Insert new row',
-    toolbarName: 'New row',
+    name: _t('command.datagrid.insertNewRow', { defaultMessage: 'Insert new row' }),
+    toolbarName: _t('command.datagrid.insertNewRow.toolbar', { defaultMessage: 'New row' }),
     icon: 'icon add',
     keyText: isMac() ? 'Command+I' : 'Insert',
     testEnabled: () => getCurrentDataGrid()?.getGrider()?.editable,
@@ -69,8 +69,8 @@
   registerCommand({
     id: 'dataGrid.addNewColumn',
     category: 'Data grid',
-    name: 'Add new column',
-    toolbarName: 'New column',
+    name: _t('command.datagrid.addNewColumn', { defaultMessage: 'Add new column' }),
+    toolbarName: _t('command.datagrid.addNewColumn.toolbar', { defaultMessage: 'New column' }),
     icon: 'icon add-column',
     testEnabled: () => getCurrentDataGrid()?.addNewColumnEnabled(),
     onClick: () => getCurrentDataGrid().addNewColumn(),
@@ -79,8 +79,8 @@
   registerCommand({
     id: 'dataGrid.cloneRows',
     category: 'Data grid',
-    name: 'Clone rows',
-    toolbarName: 'Clone row(s)',
+    name: _t('command.datagrid.cloneRows', { defaultMessage: 'Clone rows' }),
+    toolbarName: _t('command.datagrid.cloneRows.toolbar', { defaultMessage: 'Clone row(s)' }),
     keyText: 'CtrlOrCommand+Shift+C',
     testEnabled: () => getCurrentDataGrid()?.getGrider()?.editable,
     onClick: () => getCurrentDataGrid().cloneRows(),
@@ -89,7 +89,7 @@
   registerCommand({
     id: 'dataGrid.setNull',
     category: 'Data grid',
-    name: 'Set NULL',
+    name: _t('command.datagrid.setNull', { defaultMessage: 'Set NULL' }),
     keyText: 'CtrlOrCommand+0',
     testEnabled: () =>
       getCurrentDataGrid()?.getGrider()?.editable && !getCurrentDataGrid()?.getEditorTypes()?.supportFieldRemoval,
@@ -99,7 +99,7 @@
   registerCommand({
     id: 'dataGrid.removeField',
     category: 'Data grid',
-    name: 'Remove field',
+    name: _t('command.datagrid.removeField', { defaultMessage: 'Remove field' }),
     keyText: 'CtrlOrCommand+0',
     testEnabled: () =>
       getCurrentDataGrid()?.getGrider()?.editable && getCurrentDataGrid()?.getEditorTypes()?.supportFieldRemoval,
@@ -109,7 +109,7 @@
   registerCommand({
     id: 'dataGrid.undo',
     category: 'Data grid',
-    name: 'Undo',
+    name: _t('command.datagrid.undo', { defaultMessage: 'Undo' }),
     group: 'undo',
     icon: 'icon undo',
     toolbar: true,
@@ -121,7 +121,7 @@
   registerCommand({
     id: 'dataGrid.redo',
     category: 'Data grid',
-    name: 'Redo',
+    name: _t('command.datagrid.redo', { defaultMessage: 'Redo' }),
     group: 'redo',
     icon: 'icon redo',
     toolbar: true,
@@ -133,7 +133,7 @@
   registerCommand({
     id: 'dataGrid.reconnect',
     category: 'Data grid',
-    name: 'Reconnect',
+    name: _t('command.datagrid.reconnect', { defaultMessage: 'Reconnect' }),
     testEnabled: () => getCurrentDataGrid() != null,
     onClick: () => getCurrentDataGrid().reconnect(),
   });
@@ -141,7 +141,7 @@
   registerCommand({
     id: 'dataGrid.copyToClipboard',
     category: 'Data grid',
-    name: 'Copy to clipboard',
+    name: _t('command.datagrid.copyToClipboard', { defaultMessage: 'Copy to clipboard' }),
     keyText: 'CtrlOrCommand+C',
     disableHandleKeyText: 'CtrlOrCommand+C',
     testEnabled: () => getCurrentDataGrid() != null,
@@ -152,7 +152,7 @@
     id: 'dataGrid.editJsonDocument',
     category: 'Data grid',
     keyText: 'CtrlOrCommand+J',
-    name: 'Edit row as JSON document',
+    name: _t('command.datagrid.editJsonDocument', { defaultMessage: 'Edit row as JSON document' }),
     testEnabled: () => getCurrentDataGrid()?.editJsonEnabled(),
     onClick: () => getCurrentDataGrid().editJsonDocument(),
   });
@@ -160,15 +160,15 @@
   registerCommand({
     id: 'dataGrid.openSelectionInMap',
     category: 'Data grid',
-    name: 'Open selection in map',
-    testEnabled: () => getCurrentDataGrid() != null, // ?.openSelectionInMapEnabled(),
+    name: _t('command.datagrid.openSelectionInMap', { defaultMessage: 'Open selection in map' }),
+    testEnabled: () => getCurrentDataGrid() != null,
     onClick: () => getCurrentDataGrid().openSelectionInMap(),
   });
 
   registerCommand({
     id: 'dataGrid.viewJsonDocument',
     category: 'Data grid',
-    name: 'View row as JSON document',
+    name: _t('command.datagrid.viewJsonDocument', { defaultMessage: 'View row as JSON document' }),
     testEnabled: () => getCurrentDataGrid()?.viewJsonDocumentEnabled(),
     onClick: () => getCurrentDataGrid().viewJsonDocument(),
   });
@@ -176,7 +176,7 @@
   registerCommand({
     id: 'dataGrid.viewJsonValue',
     category: 'Data grid',
-    name: 'View cell as JSON document',
+    name: _t('command.datagrid.viewJsonValue', { defaultMessage: 'View cell as JSON document' }),
     testEnabled: () => getCurrentDataGrid()?.viewJsonValueEnabled(),
     onClick: () => getCurrentDataGrid().viewJsonValue(),
   });
@@ -184,7 +184,7 @@
   registerCommand({
     id: 'dataGrid.openJsonArrayInSheet',
     category: 'Data grid',
-    name: 'Open array as table',
+    name: _t('command.datagrid.openJsonArrayInSheet', { defaultMessage: 'Open array as table' }),
     testEnabled: () => getCurrentDataGrid()?.openJsonArrayInSheetEnabled(),
     onClick: () => getCurrentDataGrid().openJsonArrayInSheet(),
   });
@@ -192,7 +192,7 @@
   registerCommand({
     id: 'dataGrid.saveCellToFile',
     category: 'Data grid',
-    name: 'Save cell to file',
+    name: _t('command.datagrid.saveCellToFile', { defaultMessage: 'Save cell to file' }),
     testEnabled: () => getCurrentDataGrid()?.saveCellToFileEnabled(),
     onClick: () => getCurrentDataGrid().saveCellToFile(),
   });
@@ -200,7 +200,7 @@
   registerCommand({
     id: 'dataGrid.loadCellFromFile',
     category: 'Data grid',
-    name: 'Load cell from file',
+    name: _t('command.datagrid.loadCellFromFile', { defaultMessage: 'Load cell from file' }),
     testEnabled: () => getCurrentDataGrid()?.loadCellFromFileEnabled(),
     onClick: () => getCurrentDataGrid().loadCellFromFile(),
   });
@@ -212,7 +212,8 @@
   //   testEnabled: () => getCurrentDataGrid()?.copyJsonEnabled(),
   //   onClick: () => getCurrentDataGrid().copyJsonDocument(),
   // });
-
+  //
+  //
   registerCommand({
     id: 'dataGrid.filterSelected',
     category: 'Data grid',
@@ -221,7 +222,6 @@
     testEnabled: () => getCurrentDataGrid()?.getDisplay().filterable,
     onClick: () => getCurrentDataGrid().filterSelectedValue(),
   });
-
   registerCommand({
     id: 'dataGrid.findColumn',
     category: 'Data grid',
@@ -230,7 +230,6 @@
     testEnabled: () => getCurrentDataGrid() != null,
     getSubCommands: () => getCurrentDataGrid().buildFindMenu(),
   });
-
   registerCommand({
     id: 'dataGrid.hideColumn',
     category: 'Data grid',
@@ -239,7 +238,6 @@
     testEnabled: () => getCurrentDataGrid()?.canShowLeftPanel(),
     onClick: () => getCurrentDataGrid().hideColumn(),
   });
-
   registerCommand({
     id: 'dataGrid.clearFilter',
     category: 'Data grid',
@@ -248,7 +246,6 @@
     testEnabled: () => getCurrentDataGrid()?.clearFilterEnabled(),
     onClick: () => getCurrentDataGrid().clearFilter(),
   });
-
   registerCommand({
     id: 'dataGrid.generateSqlFromData',
     category: 'Data grid',
@@ -257,7 +254,6 @@
     testEnabled: () => getCurrentDataGrid()?.generateSqlFromDataEnabled(),
     onClick: () => getCurrentDataGrid().generateSqlFromData(),
   });
-
   registerCommand({
     id: 'dataGrid.openFreeTable',
     category: 'Data grid',
@@ -265,15 +261,6 @@
     testEnabled: () => getCurrentDataGrid() != null,
     onClick: () => getCurrentDataGrid().openFreeTable(),
   });
-
-  registerCommand({
-    id: 'dataGrid.openChartFromSelection',
-    category: 'Data grid',
-    name: 'Open chart from selection',
-    testEnabled: () => getCurrentDataGrid() != null,
-    onClick: () => getCurrentDataGrid().openChartFromSelection(),
-  });
-
   registerCommand({
     id: 'dataGrid.newJson',
     category: 'Data grid',
@@ -281,7 +268,6 @@
     testEnabled: () => getCurrentDataGrid()?.addJsonDocumentEnabled(),
     onClick: () => getCurrentDataGrid().addJsonDocument(),
   });
-
   registerCommand({
     id: 'dataGrid.editCellValue',
     category: 'Data grid',
@@ -290,53 +276,58 @@
     onClick: () => getCurrentDataGrid().editCellValue(),
   });
 
-  registerCommand({
-    id: 'dataGrid.mergeSelectedCellsIntoMirror',
-    category: 'Data grid',
-    name: 'Merge selected cells',
-    testEnabled: () => getCurrentDataGrid()?.mirrorWriteEnabled(true),
-    onClick: () => getCurrentDataGrid().mergeSelectionIntoMirror({ mergeMode: 'merge', fullRows: false }),
-  });
+  if (isProApp()) {
+    registerCommand({
+      id: 'dataGrid.sendToDataDeploy',
+      category: 'Data grid',
+      name: 'Send to data deployer',
+      testEnabled: () => getCurrentDataGrid()?.sendToDataDeployEnabled(),
+      onClick: () => getCurrentDataGrid().sendToDataDeploy(),
+    });
+  }
 
-  registerCommand({
-    id: 'dataGrid.mergeSelectedRowsIntoMirror',
-    category: 'Data grid',
-    name: 'Merge selected rows',
-    testEnabled: () => getCurrentDataGrid()?.mirrorWriteEnabled(true),
-    onClick: () => getCurrentDataGrid().mergeSelectionIntoMirror({ mergeMode: 'merge', fullRows: true }),
-  });
-
-  registerCommand({
-    id: 'dataGrid.appendSelectedCellsIntoMirror',
-    category: 'Data grid',
-    name: 'Append selected cells',
-    testEnabled: () => getCurrentDataGrid()?.mirrorWriteEnabled(true),
-    onClick: () => getCurrentDataGrid().mergeSelectionIntoMirror({ mergeMode: 'append', fullRows: false }),
-  });
-
-  registerCommand({
-    id: 'dataGrid.appendSelectedRowsIntoMirror',
-    category: 'Data grid',
-    name: 'Append selected rows',
-    testEnabled: () => getCurrentDataGrid()?.mirrorWriteEnabled(true),
-    onClick: () => getCurrentDataGrid().mergeSelectionIntoMirror({ mergeMode: 'append', fullRows: true }),
-  });
-
-  registerCommand({
-    id: 'dataGrid.replaceSelectedCellsIntoMirror',
-    category: 'Data grid',
-    name: 'Replace with selected cells',
-    testEnabled: () => getCurrentDataGrid()?.mirrorWriteEnabled(true),
-    onClick: () => getCurrentDataGrid().mergeSelectionIntoMirror({ mergeMode: 'replace', fullRows: false }),
-  });
-
-  registerCommand({
-    id: 'dataGrid.replaceSelectedRowsIntoMirror',
-    category: 'Data grid',
-    name: 'Replace with selected rows',
-    testEnabled: () => getCurrentDataGrid()?.mirrorWriteEnabled(true),
-    onClick: () => getCurrentDataGrid().mergeSelectionIntoMirror({ mergeMode: 'replace', fullRows: true }),
-  });
+  // registerCommand({
+  //   id: 'dataGrid.mergeSelectedCellsIntoMirror',
+  //   category: 'Data grid',
+  //   name: 'Merge selected cells',
+  //   testEnabled: () => getCurrentDataGrid()?.mirrorWriteEnabled(true),
+  //   onClick: () => getCurrentDataGrid().mergeSelectionIntoMirror({ mergeMode: 'merge', fullRows: false }),
+  // });
+  // registerCommand({
+  //   id: 'dataGrid.mergeSelectedRowsIntoMirror',
+  //   category: 'Data grid',
+  //   name: 'Merge selected rows',
+  //   testEnabled: () => getCurrentDataGrid()?.mirrorWriteEnabled(true),
+  //   onClick: () => getCurrentDataGrid().mergeSelectionIntoMirror({ mergeMode: 'merge', fullRows: true }),
+  // });
+  // registerCommand({
+  //   id: 'dataGrid.appendSelectedCellsIntoMirror',
+  //   category: 'Data grid',
+  //   name: 'Append selected cells',
+  //   testEnabled: () => getCurrentDataGrid()?.mirrorWriteEnabled(true),
+  //   onClick: () => getCurrentDataGrid().mergeSelectionIntoMirror({ mergeMode: 'append', fullRows: false }),
+  // });
+  // registerCommand({
+  //   id: 'dataGrid.appendSelectedRowsIntoMirror',
+  //   category: 'Data grid',
+  //   name: 'Append selected rows',
+  //   testEnabled: () => getCurrentDataGrid()?.mirrorWriteEnabled(true),
+  //   onClick: () => getCurrentDataGrid().mergeSelectionIntoMirror({ mergeMode: 'append', fullRows: true }),
+  // });
+  // registerCommand({
+  //   id: 'dataGrid.replaceSelectedCellsIntoMirror',
+  //   category: 'Data grid',
+  //   name: 'Replace with selected cells',
+  //   testEnabled: () => getCurrentDataGrid()?.mirrorWriteEnabled(true),
+  //   onClick: () => getCurrentDataGrid().mergeSelectionIntoMirror({ mergeMode: 'replace', fullRows: false }),
+  // });
+  // registerCommand({
+  //   id: 'dataGrid.replaceSelectedRowsIntoMirror',
+  //   category: 'Data grid',
+  //   name: 'Replace with selected rows',
+  //   testEnabled: () => getCurrentDataGrid()?.mirrorWriteEnabled(true),
+  //   onClick: () => getCurrentDataGrid().mergeSelectionIntoMirror({ mergeMode: 'replace', fullRows: true }),
+  // });
 
   function getSelectedCellsInfo(selectedCells, grider, realColumnUniqueNames, selectedRowData) {
     if (selectedCells.length > 1 && selectedCells.every(x => _.isNumber(x[0]) && _.isNumber(x[1]))) {
@@ -430,6 +421,10 @@
   import { openJsonLinesData } from '../utility/openJsonLinesData';
   import contextMenuActivator from '../utility/contextMenuActivator';
   import InputTextModal from '../modals/InputTextModal.svelte';
+  import { _t } from '../translations';
+  import { isProApp } from '../utility/proTools';
+  import SaveArchiveModal from '../modals/SaveArchiveModal.svelte';
+  import hasPermission from '../utility/hasPermission';
 
   export let onLoadNextData = undefined;
   export let grider = undefined;
@@ -466,6 +461,9 @@
   export let jslid;
   // export let generalAllowSave = false;
   export let hideGridLeftColumn = false;
+  export let overlayDefinition = null;
+  export let onGetSelectionMenu = null;
+  export let onOpenChart = null;
 
   export const activator = createActivator('DataGridCore', false);
 
@@ -494,6 +492,7 @@
   const domFilterControlsRef = createRef({});
 
   let isGridFocused = false;
+  let selectionMenu = null;
 
   const tabid = getContext('tabid');
 
@@ -617,6 +616,7 @@
           if (column.uniquePath.length > 1) continue;
           if (column.autoIncrement) continue;
           if (column.isClusterKey) continue;
+          if (column.hasAutoValue) continue;
 
           grider.setCellValue(rowIndex, column.uniqueName, grider.getRowData(index)[column.uniqueName]);
         }
@@ -669,6 +669,7 @@
       keyColumns: display?.baseTable?.primaryKey?.columns?.map(col => col.columnName) || [
         display?.columns ? display?.columns[0].columnName : columns[0],
       ],
+      editorTypes: getEditorTypes(),
     });
     if (domFocusField) domFocusField.focus();
   }
@@ -708,23 +709,6 @@
 
   export function openFreeTable() {
     openJsonLinesData(getSelectedFreeDataRows());
-  }
-
-  export function openChartFromSelection() {
-    openNewTab(
-      {
-        title: 'Chart #',
-        icon: 'img chart',
-        tabComponent: 'ChartTab',
-        props: {},
-      },
-      {
-        editor: {
-          data: getSelectedFreeData(),
-          config: { chartType: 'bar' },
-        },
-      }
-    );
   }
 
   export function viewJsonDocumentEnabled() {
@@ -1015,11 +999,11 @@
     });
   }
 
-  export function mirrorWriteEnabled(requireKey) {
-    return requireKey ? !!display.baseTable?.primaryKey || !!display.baseCollection : !!display.baseTableOrSimilar;
+  export function sendToDataDeployEnabled() {
+    return !!display.baseTable?.primaryKey || !!display.baseCollection;
   }
 
-  export async function mergeSelectionIntoMirror({ fullRows, mergeMode = 'merge' }) {
+  export async function sendToDataDeploy() {
     const file = display.baseTableOrSimilar?.pureName;
     const mergeKey = display.baseCollection
       ? display.baseCollection?.uniqueKey?.map(x => x.columnName)
@@ -1031,19 +1015,76 @@
     const rows = rowIndexes.map(rowIndex => grider.getRowData(rowIndex));
     // @ts-ignore
     const columns = colIndexes.map(col => realColumnUniqueNames[col]);
-    const mergedRows = fullRows ? rows : rows.map(x => _.pick(x, _.uniq([...columns, ...mergeKey])));
 
-    const res = await apiCall('archive/modify-file', {
+    const mergedRows = rows.map(x => _.pick(x, _.uniq([...columns, ...mergeKey])));
+
+    showModal(SaveArchiveModal, {
       folder: $currentArchive,
       file,
-      mergedRows,
-      mergeKey,
-      mergeMode,
+      fileIsReadOnly: true,
+      onSave: async folder => {
+        const res = await apiCall('archive/modify-file', {
+          folder,
+          file,
+          mergedRows,
+          mergeKey,
+          mergeMode: 'merge',
+        });
+        if (res) {
+          showSnackbarSuccess(`Merged ${mergedRows.length} rows into ${file} in archive ${folder}`);
+
+          openNewTab(
+            {
+              title: folder,
+              icon: 'img data-deploy',
+              tabComponent: 'DataDeployTab',
+              props: {
+                conid,
+                database,
+              },
+            },
+            {
+              editor: {
+                archiveFolder: folder,
+                conid,
+                database,
+              },
+            }
+          );
+        }
+      },
     });
-    if (res) {
-      showSnackbarSuccess(`Merged ${mergedRows.length} rows into ${file} in archive ${$currentArchive}`);
-    }
   }
+
+  // export function mirrorWriteEnabled(requireKey) {
+  //   return requireKey ? !!display.baseTable?.primaryKey || !!display.baseCollection : !!display.baseTableOrSimilar;
+  // }
+
+  // export async function mergeSelectionIntoMirror({ fullRows, mergeMode = 'merge' }) {
+  //   const file = display.baseTableOrSimilar?.pureName;
+  //   const mergeKey = display.baseCollection
+  //     ? display.baseCollection?.uniqueKey?.map(x => x.columnName)
+  //     : display.baseTable?.primaryKey.columns.map(x => x.columnName);
+
+  //   const cells = cellsToRegularCells(selectedCells);
+  //   const rowIndexes = _.sortBy(_.uniq(cells.map(x => x[0])));
+  //   const colIndexes = _.sortBy(_.uniq(cells.map(x => x[1])));
+  //   const rows = rowIndexes.map(rowIndex => grider.getRowData(rowIndex));
+  //   // @ts-ignore
+  //   const columns = colIndexes.map(col => realColumnUniqueNames[col]);
+  //   const mergedRows = fullRows ? rows : rows.map(x => _.pick(x, _.uniq([...columns, ...mergeKey])));
+
+  //   const res = await apiCall('archive/modify-file', {
+  //     folder: $currentArchive,
+  //     file,
+  //     mergedRows,
+  //     mergeKey,
+  //     mergeMode,
+  //   });
+  //   if (res) {
+  //     showSnackbarSuccess(`Merged ${mergedRows.length} rows into ${file} in archive ${$currentArchive}`);
+  //   }
+  // }
 
   export function canShowLeftPanel() {
     return !hideGridLeftColumn;
@@ -1164,8 +1205,16 @@
             onChangeSelectedColumns(getSelectedColumns().map(x => x.columnName));
           }
 
+          let publishedCells = null;
+
           if (onPublishedCellsChanged) {
-            onPublishedCellsChanged(getCellsPublished(selectedCells));
+            if (!publishedCells) publishedCells = getCellsPublished(selectedCells);
+            onPublishedCellsChanged(publishedCells);
+          }
+
+          if (onGetSelectionMenu) {
+            if (!publishedCells) publishedCells = getCellsPublished(selectedCells);
+            selectionMenu = onGetSelectionMenu(publishedCells);
           }
         }
       });
@@ -1204,6 +1253,7 @@
           engine: display?.driver,
           condition: display?.getChangeSetCondition(rowData),
           insertedRowIndex: grider?.getInsertedRowIndex(row),
+          rowStatus: grider.getRowStatus(row),
         };
       })
       .filter(x => x.column);
@@ -1311,6 +1361,7 @@
     if (!rowData) return null;
     const cellData = rowData[realColumnUniqueNames[cell[1]]];
     if (shouldOpenMultilineDialog(cellData)) {
+      dragStartCell = null;
       showModal(EditCellDataModal, {
         dataEditorTypesBehaviour: getEditorTypes(),
         value: cellData,
@@ -1761,14 +1812,14 @@
     { placeTag: 'save' },
     { command: 'dataGrid.revertRowChanges', hideDisabled: true },
     { command: 'dataGrid.revertAllChanges', hideDisabled: true },
-    { command: 'dataGrid.deleteSelectedRows' },
-    { command: 'dataGrid.insertNewRow' },
-    { command: 'dataGrid.cloneRows' },
+    { command: 'dataGrid.deleteSelectedRows', hideDisabled: true },
+    { command: 'dataGrid.insertNewRow', hideDisabled: true },
+    { command: 'dataGrid.cloneRows', hideDisabled: true },
     { command: 'dataGrid.setNull', hideDisabled: true },
     { command: 'dataGrid.removeField', hideDisabled: true },
     { placeTag: 'edit' },
     { divider: true },
-    { command: 'dataGrid.findColumn' },
+    { command: 'dataGrid.findColumn', hideDisabled: true },
     { command: 'dataGrid.hideColumn', hideDisabled: true },
     { command: 'dataGrid.filterSelected' },
     { command: 'dataGrid.clearFilter' },
@@ -1787,20 +1838,26 @@
     // { command: 'dataGrid.copyJsonDocument', hideDisabled: true },
     { divider: true },
     { placeTag: 'export' },
-    {
-      label: 'Save to current archive',
-      submenu: [
-        { command: 'dataGrid.mergeSelectedCellsIntoMirror' },
-        { command: 'dataGrid.mergeSelectedRowsIntoMirror' },
-        { command: 'dataGrid.appendSelectedCellsIntoMirror' },
-        { command: 'dataGrid.appendSelectedRowsIntoMirror' },
-        { command: 'dataGrid.replaceSelectedCellsIntoMirror' },
-        { command: 'dataGrid.replaceSelectedRowsIntoMirror' },
-      ],
-    },
+    // {
+    //   label: 'Save to current archive',
+    //   submenu: [
+    //     { command: 'dataGrid.mergeSelectedCellsIntoMirror' },
+    //     { command: 'dataGrid.mergeSelectedRowsIntoMirror' },
+    //     { command: 'dataGrid.appendSelectedCellsIntoMirror' },
+    //     { command: 'dataGrid.appendSelectedRowsIntoMirror' },
+    //     { command: 'dataGrid.replaceSelectedCellsIntoMirror' },
+    //     { command: 'dataGrid.replaceSelectedRowsIntoMirror' },
+    //   ],
+    // },
+    isProApp() && { command: 'dataGrid.sendToDataDeploy' },
+    isProApp() &&
+      hasPermission('dbops/charts') &&
+      onOpenChart && {
+        text: 'Open chart',
+        onClick: () => onOpenChart(),
+      },
     { command: 'dataGrid.generateSqlFromData' },
     { command: 'dataGrid.openFreeTable' },
-    { command: 'dataGrid.openChartFromSelection' },
     { command: 'dataGrid.openSelectionInMap', hideDisabled: true },
     { placeTag: 'chart' }
   );
@@ -1947,6 +2004,7 @@
                 setGrouping={display.groupable ? groupFunc => display.setGrouping(col.uniqueName, groupFunc) : null}
                 grouping={display.getGrouping(col.uniqueName)}
                 {allowDefineVirtualReferences}
+                seachInColumns={display.config?.searchInColumns}
               />
             </td>
           {/each}
@@ -1960,7 +2018,11 @@
               style={`width:${headerColWidth}px; min-width:${headerColWidth}px; max-width:${headerColWidth}px`}
             >
               {#if display.filterCount > 0}
-                <InlineButton on:click={() => display.clearFilters()} square>
+                <InlineButton
+                  on:click={() => display.clearFilters()}
+                  square
+                  data-testid="DataGridCore_button_clearFilters"
+                >
                   <FontIcon icon="icon filter-off" />
                 </InlineButton>
               {/if}
@@ -2026,6 +2088,7 @@
             onSetFormView={formViewAvailable && display?.baseTable?.primaryKey ? handleSetFormView : null}
             {dataEditorTypesBehaviourOverride}
             {gridColoringMode}
+            {overlayDefinition}
           />
         {/each}
       </tbody>
@@ -2062,7 +2125,19 @@
       on:scroll={e => (firstVisibleRowScrollIndex = e.detail)}
       bind:this={domVerticalScroll}
     />
-    {#if selectedCellsInfo}
+    {#if selectionMenu}
+      <div class="selection-menu">
+        {#each selectionMenu as item}
+          <InlineButton
+            on:click={() => {
+              item.onClick();
+            }}
+          >
+            {item.text}
+          </InlineButton>
+        {/each}
+      </div>
+    {:else if selectedCellsInfo}
       <div class="row-count-label">
         {selectedCellsInfo}
       </div>
@@ -2121,6 +2196,13 @@
     top: -1000px;
   }
   .row-count-label {
+    position: absolute;
+    background-color: var(--theme-bg-2);
+    right: 40px;
+    bottom: 20px;
+  }
+
+  .selection-menu {
     position: absolute;
     background-color: var(--theme-bg-2);
     right: 40px;

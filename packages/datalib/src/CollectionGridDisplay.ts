@@ -70,6 +70,7 @@ function getDisplayColumn(basePath, columnName, display: CollectionGridDisplay) 
     isPartitionKey: !!display?.collection?.partitionKey?.find(x => x.columnName == uniqueName),
     isClusterKey: !!display?.collection?.clusterKey?.find(x => x.columnName == uniqueName),
     isUniqueKey: !!display?.collection?.uniqueKey?.find(x => x.columnName == uniqueName),
+    hasAutoValue: !!display?.collection?.autoValueColumns?.find(x => x.columnName == uniqueName),
   };
 }
 
@@ -101,9 +102,10 @@ export class CollectionGridDisplay extends GridDisplay {
     setCache: ChangeCacheFunc,
     loadedRows,
     changeSet,
-    readOnly = false
+    readOnly = false,
+    currentSettings = null
   ) {
-    super(config, setConfig, cache, setCache, driver);
+    super(config, setConfig, cache, setCache, driver, undefined, undefined, currentSettings);
     const changedDocs = _.compact(changeSet.updates.map(chs => chs.document));
     const insertedDocs = _.compact(changeSet.inserts.map(chs => chs.fields));
     this.columns = analyseCollectionDisplayColumns([...(loadedRows || []), ...changedDocs, ...insertedDocs], this);

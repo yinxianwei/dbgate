@@ -2,12 +2,12 @@
   const getCurrentEditor = () => getActiveComponent('ImportExportTab');
 
   registerFileCommands({
-    idPrefix: 'job',
-    category: 'Job',
+    idPrefix: 'impexp',
+    category: 'Import & Export',
     getCurrentEditor,
-    folder: 'jobs',
+    folder: 'impexp',
     format: 'json',
-    fileExtension: 'job',
+    fileExtension: 'impexp',
 
     // undoRedo: true,
   });
@@ -50,6 +50,9 @@
   import { registerFileCommands } from '../commands/stdCommands';
   import ToolStripCommandButton from '../buttons/ToolStripCommandButton.svelte';
   import ToolStripSaveButton from '../buttons/ToolStripSaveButton.svelte';
+  import uuidv1 from 'uuid/v1';
+  import { tick } from 'svelte';
+  import { showSnackbarError } from '../utility/snackbar';
 
   let busy = false;
   let executeNumber = 0;
@@ -167,7 +170,7 @@
 
   const handleGenerateScript = async e => {
     const values = $formValues as any;
-    const code = await createImpExpScript($extensions, values, true);
+    const code = await createImpExpScript($extensions, values, 'script', false);
     openNewTab(
       {
         title: 'Shell #',
@@ -183,12 +186,29 @@
     progressHolder = {};
     const values = $formValues as any;
     busy = true;
-    const script = await createImpExpScript($extensions, values);
+    const script = await createImpExpScript($extensions, values, 'json', true);
     executeNumber += 1;
-    let runid = runnerId;
-    const resp = await apiCall('runners/start', { script });
-    runid = resp.runid;
-    runnerId = runid;
+
+    if (script.hostConnection) {
+      runnerId = uuidv1();
+      await tick();
+      await apiCall('database-connections/eval-json-script', {
+        runid: runnerId,
+        conid: script.hostConnection.conid,
+        database: script.hostConnection.database,
+        script,
+      });
+    } else {
+      let runid = runnerId;
+      const resp = await apiCall('runners/start', { script });
+      if (resp.errorMessage) {
+        busy = false;
+        showSnackbarError(resp.errorMessage);
+        return;
+      }
+      runid = resp.runid;
+      runnerId = runid;
+    }
 
     if (values.targetStorageType == 'archive') {
       refreshArchiveFolderRef.set(values.targetArchiveFolder);
@@ -264,6 +284,7 @@
           {previewReaderStore}
           {progressHolder}
           isTabActive={tabid == $activeTabId}
+          isRunning={busy}
         />
 
         {#if busy}
@@ -273,7 +294,12 @@
 
       <svelte:fragment slot="2">
         <WidgetColumnBar>
-          <WidgetColumnBarItem title="Output files" name="output" height="20%">
+          <WidgetColumnBarItem
+            title="Output files"
+            name="output"
+            height="20%"
+            data-testid="ImportExportTab_outputFiles"
+          >
             <RunnerOutputFiles {runnerId} {executeNumber} />
           </WidgetColumnBarItem>
           <WidgetColumnBarItem title="Messages" name="messages">
@@ -284,7 +310,12 @@
               showCaller
             />
           </WidgetColumnBarItem>
-          <WidgetColumnBarItem title="Preview" name="preview" skip={!$previewReaderStore}>
+          <WidgetColumnBarItem
+            title="Preview"
+            name="preview"
+            skip={!$previewReaderStore}
+            data-testid="ImportExportTab_preview"
+          >
             <PreviewDataGrid reader={$previewReaderStore} />
           </WidgetColumnBarItem>
           <WidgetColumnBarItem title="Advanced configuration" name="config" collapsed>
@@ -297,12 +328,18 @@
   </FormProviderCore>
   <svelte:fragment slot="toolstrip">
     {#if busy}
-      <ToolStripButton icon="icon stop" on:click={handleCancel}>Stop</ToolStripButton>
+      <ToolStripButton icon="icon stop" on:click={handleCancel} data-testid="ImportExportTab_stopButton"
+        >Stop</ToolStripButton
+      >
     {:else}
-      <ToolStripButton on:click={handleExecute} icon="icon run">Run</ToolStripButton>
+      <ToolStripButton on:click={handleExecute} icon="icon run" data-testid="ImportExportTab_executeButton"
+        >Run</ToolStripButton
+      >
     {/if}
-    <ToolStripButton icon="img shell" on:click={handleGenerateScript}>Generate script</ToolStripButton>
-    <ToolStripSaveButton idPrefix="job" />
+    <ToolStripButton icon="img shell" on:click={handleGenerateScript} data-testid="ImportExportTab_generateScriptButton"
+      >Generate script</ToolStripButton
+    >
+    <ToolStripSaveButton idPrefix="impexp" />
   </svelte:fragment>
 </ToolStripContainer>
 

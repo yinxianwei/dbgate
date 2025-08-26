@@ -78,6 +78,7 @@ export class SqlDumper implements AlterProcessor {
     else if (_isNumber(value)) this.putRaw(value.toString());
     else if (_isDate(value)) this.putStringValue(new Date(value).toISOString());
     else if (value?.type == 'Buffer' && _isArray(value?.data)) this.putByteArrayValue(value?.data);
+    else if (value?.$bigint) this.putRaw(value?.$bigint);
     else if (_isPlainObject(value) || _isArray(value)) this.putStringValue(JSON.stringify(value));
     else this.put('^null');
   }
@@ -265,11 +266,11 @@ export class SqlDumper implements AlterProcessor {
         this.columnDefault(column);
       }
       if (includeNullable && !this.dialect?.specificNullabilityImplementation) {
-        this.put(column.notNull ? '^not ^null' : '^null');
+        this.put(column.notNull ? '^not ^null' : this.dialect.implicitNullDeclaration ? '' : '^null');
       }
     } else {
       if (includeNullable && !this.dialect?.specificNullabilityImplementation) {
-        this.put(column.notNull ? '^not ^null' : '^null');
+        this.put(column.notNull ? '^not ^null' : this.dialect.implicitNullDeclaration ? '' : '^null');
       }
       if (includeDefault && column.defaultValue?.toString()?.trim()) {
         this.columnDefault(column);

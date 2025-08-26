@@ -12,6 +12,7 @@
   export let title;
   export let name;
   export let skip = false;
+  export let positiveCondition = true;
   export let height = null;
   export let collapsed = null;
 
@@ -33,11 +34,12 @@
       collapsed,
       height,
       skip,
+      positiveCondition,
     },
     dynamicProps
   );
 
-  $: updateWidgetItemDefinition(widgetItemIndex, { collapsed: !visible, height, skip });
+  $: updateWidgetItemDefinition(widgetItemIndex, { collapsed: !visible, height, skip, positiveCondition });
 
   $: setInitialSize(height, $widgetColumnBarHeight);
 
@@ -67,7 +69,7 @@
   $: collapsible = $dynamicProps.visibleItemsCount != 1 || !visible;
 </script>
 
-{#if !skip}
+{#if !skip && positiveCondition}
   <WidgetTitle
     clickable={collapsible}
     on:click={collapsible ? () => (visible = !visible) : null}
@@ -76,7 +78,11 @@
   >
 
   {#if visible}
-    <div class="wrapper" style={$dynamicProps.splitterVisible ? `height:${size}px` : 'flex: 1 1 0'}>
+    <div
+      class="wrapper"
+      style={$dynamicProps.splitterVisible ? `height:${size}px` : 'flex: 1 1 0'}
+      data-testid={$$props['data-testid'] ? `${$$props['data-testid']}_content` : undefined}
+    >
       <slot />
     </div>
 

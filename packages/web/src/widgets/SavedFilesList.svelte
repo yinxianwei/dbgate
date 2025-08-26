@@ -10,6 +10,8 @@
   import { apiCall } from '../utility/api';
   import { useFiles } from '../utility/metadataLoaders';
   import WidgetsInnerContainer from './WidgetsInnerContainer.svelte';
+  import { isProApp } from '../utility/proTools';
+  import InlineUploadButton from '../buttons/InlineUploadButton.svelte';
 
   let filter = '';
 
@@ -20,7 +22,9 @@
   const queryFiles = useFiles({ folder: 'query' });
   const sqliteFiles = useFiles({ folder: 'sqlite' });
   const diagramFiles = useFiles({ folder: 'diagrams' });
-  const jobFiles = useFiles({ folder: 'jobs' });
+  const importExportJobFiles = useFiles({ folder: 'impexp' });
+  const dataDeployJobFiles = useFiles({ folder: 'datadeploy' });
+  const dbCompareJobFiles = useFiles({ folder: 'dbcompare' });
   const perspectiveFiles = useFiles({ folder: 'perspectives' });
   const modelTransformFiles = useFiles({ folder: 'modtrans' });
 
@@ -33,8 +37,10 @@
     ...($sqliteFiles || []),
     ...($diagramFiles || []),
     ...($perspectiveFiles || []),
-    ...($jobFiles || []),
+    ...($importExportJobFiles || []),
     ...($modelTransformFiles || []),
+    ...((isProApp() && $dataDeployJobFiles) || []),
+    ...((isProApp() && $dbCompareJobFiles) || []),
   ];
 
   function handleRefreshFiles() {
@@ -48,26 +54,44 @@
         'sqlite',
         'diagrams',
         'perspectives',
-        'jobs',
+        'impexp',
         'modtrans',
+        'datadeploy',
+        'dbcompare',
       ],
     });
   }
 
   function dataFolderTitle(folder) {
     if (folder == 'modtrans') return 'Model transforms';
+    if (folder == 'datadeploy') return 'Data deploy jobs';
+    if (folder == 'dbcompare') return 'Database compare jobs';
     return _.startCase(folder);
+  }
+
+  async function handleUploadedFile(filePath, fileName) {
+    await apiCall('files/save-uploaded-file', { filePath, fileName });
   }
 </script>
 
-<WidgetsInnerContainer>
-  <SearchBoxWrapper>
-    <SearchInput placeholder="Search saved files" bind:value={filter} />
-    <CloseSearchButton bind:filter />
-    <InlineButton on:click={handleRefreshFiles} title="Refresh files">
-      <FontIcon icon="icon refresh" />
-    </InlineButton>
-  </SearchBoxWrapper>
+<SearchBoxWrapper>
+  <SearchInput placeholder="Search saved files" bind:value={filter} />
+  <CloseSearchButton bind:filter />
+  <InlineUploadButton
+    filters={[
+      {
+        name: `All supported files`,
+        extensions: ['sql'],
+      },
+      { name: `SQL files`, extensions: ['sql'] },
+    ]}
+    onProcessFile={handleUploadedFile}
+  />
+  <InlineButton on:click={handleRefreshFiles} title="Refresh files" data-testid="SavedFileList_buttonRefresh">
+    <FontIcon icon="icon refresh" />
+  </InlineButton>
+</SearchBoxWrapper>
 
+<WidgetsInnerContainer>
   <AppObjectList list={files} module={savedFileAppObject} groupFunc={data => dataFolderTitle(data.folder)} {filter} />
 </WidgetsInnerContainer>

@@ -1,5 +1,6 @@
 <script lang="ts" context="module">
-  import { filterName, getConnectionLabel } from 'dbgate-tools';
+  import { filterName, getConnectionLabel, getSqlFrontMatter } from 'dbgate-tools';
+  import yaml from 'js-yaml';
 
   interface FileTypeHandler {
     icon: string;
@@ -7,6 +8,9 @@
     tabComponent: string;
     folder: string;
     currentConnection: boolean;
+    extension: string;
+    label: string;
+    switchDatabaseOnOpen?: (data: any) => Promise<boolean>;
   }
 
   const sql: FileTypeHandler = {
@@ -15,6 +19,23 @@
     tabComponent: 'QueryTab',
     folder: 'sql',
     currentConnection: true,
+    extension: 'sql',
+    label: 'SQL file',
+    switchDatabaseOnOpen: async data => {
+      const frontMatter = getSqlFrontMatter(data, yaml);
+      if (frontMatter?.connectionId) {
+        const connection = await getConnectionInfo({ conid: frontMatter.connectionId });
+        // console.log('Switching database to', frontMatter.databaseName, 'on connection', connection);
+        if (connection && frontMatter.databaseName) {
+          currentDatabase.set({
+            connection,
+            name: frontMatter.databaseName,
+          });
+          return true;
+        }
+      }
+      return false;
+    },
   };
 
   const shell: FileTypeHandler = {
@@ -23,6 +44,8 @@
     tabComponent: 'ShellTab',
     folder: 'shell',
     currentConnection: false,
+    extension: 'js',
+    label: 'JavaScript Shell script',
   };
 
   const markdown: FileTypeHandler = {
@@ -31,14 +54,8 @@
     tabComponent: 'MarkdownEditorTab',
     folder: 'markdown',
     currentConnection: false,
-  };
-
-  const charts: FileTypeHandler = {
-    icon: 'img chart',
-    format: 'json',
-    tabComponent: 'ChartTab',
-    folder: 'charts',
-    currentConnection: true,
+    extension: 'md',
+    label: 'Markdown file',
   };
 
   const query: FileTypeHandler = {
@@ -47,6 +64,8 @@
     tabComponent: 'QueryDesignTab',
     folder: 'query',
     currentConnection: true,
+    extension: 'json',
+    label: 'Query design file',
   };
 
   const sqlite: FileTypeHandler = {
@@ -55,6 +74,8 @@
     tabComponent: null,
     folder: 'sqlite',
     currentConnection: true,
+    extension: 'sqlite',
+    label: 'SQLite database',
   };
 
   const diagrams: FileTypeHandler = {
@@ -63,15 +84,43 @@
     tabComponent: 'DiagramTab',
     folder: 'diagrams',
     currentConnection: true,
+    extension: 'json',
+    label: 'Diagram file',
   };
 
-  const jobs: FileTypeHandler = {
+  const impexp: FileTypeHandler = {
     icon: 'img export',
     format: 'json',
     tabComponent: 'ImportExportTab',
-    folder: 'jobs',
+    folder: 'impexp',
     currentConnection: false,
+    extension: 'json',
+    label: 'Import/Export file',
   };
+
+  const datadeploy: FileTypeHandler = isProApp()
+    ? {
+        icon: 'img data-deploy',
+        format: 'json',
+        tabComponent: 'DataDeployTab',
+        folder: 'datadeploy',
+        currentConnection: false,
+        extension: 'json',
+        label: 'Data deploy file',
+      }
+    : undefined;
+
+  const dbcompare: FileTypeHandler = isProApp()
+    ? {
+        icon: 'img compare',
+        format: 'json',
+        tabComponent: 'CompareModelTab',
+        folder: 'dbcompare',
+        currentConnection: false,
+        extension: 'json',
+        label: 'Database compare file',
+      }
+    : undefined;
 
   const perspectives: FileTypeHandler = {
     icon: 'img perspective',
@@ -79,6 +128,8 @@
     tabComponent: 'PerspectiveTab',
     folder: 'pesrpectives',
     currentConnection: true,
+    extension: 'json',
+    label: 'Perspective file',
   };
 
   const modtrans: FileTypeHandler = {
@@ -87,19 +138,22 @@
     tabComponent: 'ModelTransformTab',
     folder: 'modtrans',
     currentConnection: false,
+    extension: 'json',
+    label: 'Model transform file',
   };
 
   export const SAVED_FILE_HANDLERS = {
     sql,
     shell,
     markdown,
-    charts,
     query,
     sqlite,
     diagrams,
     perspectives,
-    jobs,
+    impexp,
     modtrans,
+    datadeploy,
+    dbcompare,
   };
 
   export const extractKey = data => data.file;
@@ -122,6 +176,9 @@
   import openNewTab from '../utility/openNewTab';
 
   import AppObjectCore from './AppObjectCore.svelte';
+  import { isProApp } from '../utility/proTools';
+  import { saveFileToDisk } from '../utility/exportFileTools';
+  import { getConnectionInfo } from '../utility/metadataLoaders';
 
   export let data;
 
@@ -148,6 +205,7 @@
       hasPermission(`files/${data.folder}/write`) && { text: 'Create copy', onClick: handleCopy },
       hasPermission(`files/${data.folder}/write`) && { text: 'Delete', onClick: handleDelete },
       folder == 'markdown' && { text: 'Show page', onClick: showMarkdownPage },
+      { text: 'Download', onClick: handleDownload },
     ];
   }
 
@@ -155,7 +213,14 @@
     showModal(ConfirmModal, {
       message: `Really delete file ${data.file}?`,
       onConfirm: () => {
-        apiCall('files/delete', data);
+        if (data.folid && data.cntid) {
+          apiCall('cloud/delete-content', {
+            folid: data.folid,
+            cntid: data.cntid,
+          });
+        } else {
+          apiCall('files/delete', data);
+        }
       },
     });
   };
@@ -166,7 +231,15 @@
       label: 'New file name',
       header: 'Rename file',
       onConfirm: newFile => {
-        apiCall('files/rename', { ...data, newFile });
+        if (data.folid && data.cntid) {
+          apiCall('cloud/rename-content', {
+            folid: data.folid,
+            cntid: data.cntid,
+            name: newFile,
+          });
+        } else {
+          apiCall('files/rename', { ...data, newFile });
+        }
       },
     });
   };
@@ -175,18 +248,60 @@
     showModal(InputTextModal, {
       value: data.file,
       label: 'New file name',
-      header: 'Rename file',
+      header: 'Copy file',
       onConfirm: newFile => {
-        apiCall('files/copy', { ...data, newFile });
+        if (data.folid && data.cntid) {
+          apiCall('cloud/copy-file', {
+            folid: data.folid,
+            cntid: data.cntid,
+            name: newFile,
+          });
+        } else {
+          apiCall('files/copy', { ...data, newFile });
+        }
       },
     });
   };
 
-  async function openTab() {
-    const resp = await apiCall('files/load', { folder, file: data.file, format: handler.format });
+  const handleDownload = () => {
+    saveFileToDisk(
+      async filePath => {
+        if (data.folid && data.cntid) {
+          await apiCall('cloud/export-file', {
+            folid: data.folid,
+            cntid: data.cntid,
+            filePath,
+          });
+        } else {
+          await apiCall('files/export-file', {
+            folder,
+            file: data.file,
+            filePath,
+          });
+        }
+      },
+      { formatLabel: handler.label, formatExtension: handler.format, defaultFileName: data.file }
+    );
+  };
 
-    const connProps: any = {};
+  async function openTab() {
+    let dataContent;
+    if (data.folid && data.cntid) {
+      const resp = await apiCall('cloud/get-content', {
+        folid: data.folid,
+        cntid: data.cntid,
+      });
+      dataContent = resp.content;
+    } else {
+      dataContent = await apiCall('files/load', { folder, file: data.file, format: handler.format });
+    }
+
     let tooltip = undefined;
+    const connProps: any = {};
+
+    if (handler.switchDatabaseOnOpen) {
+      await handler.switchDatabaseOnOpen(dataContent);
+    }
 
     if (handler.currentConnection) {
       const connection = _.get($currentDatabase, 'connection') || {};
@@ -206,10 +321,12 @@
           savedFile: data.file,
           savedFolder: handler.folder,
           savedFormat: handler.format,
+          savedCloudFolderId: data.folid,
+          savedCloudContentId: data.cntid,
           ...connProps,
         },
       },
-      { editor: resp }
+      { editor: dataContent }
     );
   }
 </script>

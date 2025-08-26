@@ -4,7 +4,13 @@ import _isDate from 'lodash/isDate';
 import _isNumber from 'lodash/isNumber';
 import _isPlainObject from 'lodash/isPlainObject';
 import _pad from 'lodash/pad';
+import _cloneDeepWith from 'lodash/cloneDeepWith';
+import _isEmpty from 'lodash/isEmpty';
+import _omitBy from 'lodash/omitBy';
 import { DataEditorTypesBehaviour } from 'dbgate-types';
+import isPlainObject from 'lodash/isPlainObject';
+
+export const MAX_GRID_TEXT_LENGTH = 1000; // maximum length of text in grid cell, longer text is truncated
 
 export type EditorDataType =
   | 'null'
@@ -69,6 +75,37 @@ export function parseCellValue(value, editorTypes?: DataEditorTypesBehaviour) {
     }
   }
 
+  if (editorTypes?.parseGeopointAsDollar) {
+    const m = value.match(/^([\d\.]+)\s*°\s*([NS]),\s*([\d\.]+)\s*°\s*([EW])$/i);
+    if (m) {
+      let latitude = parseFloat(m[1]);
+      const latDir = m[2].toUpperCase();
+      let longitude = parseFloat(m[3]);
+      const lonDir = m[4].toUpperCase();
+
+      if (latDir === 'S') latitude = -latitude;
+      if (lonDir === 'W') longitude = -longitude;
+
+      return {
+        $geoPoint: {
+          latitude,
+          longitude,
+        },
+      };
+    }
+  }
+
+  if (editorTypes?.parseFsDocumentRefAsDollar) {
+    const trimmedValue = value.replace(/\s/g, '');
+    if (trimmedValue.startsWith('$ref:')) {
+      return {
+        $fsDocumentRef: {
+          documentPath: trimmedValue.slice(5),
+        },
+      };
+    }
+  }
+
   if (editorTypes?.parseJsonNull) {
     if (value == 'null') return null;
   }
@@ -80,7 +117,7 @@ export function parseCellValue(value, editorTypes?: DataEditorTypesBehaviour) {
 
   if (editorTypes?.parseNumber) {
     if (/^-?[0-9]+(?:\.[0-9]+)?$/.test(value)) {
-      return parseFloat(value);
+      return parseNumberSafe(value);
     }
   }
 
@@ -150,7 +187,13 @@ function stringifyJsonToGrid(value): ReturnType<typeof stringifyCellValue> {
 
 export function stringifyCellValue(
   value,
-  intent: 'gridCellIntent' | 'inlineEditorIntent' | 'multilineEditorIntent' | 'stringConversionIntent' | 'exportIntent',
+  intent:
+    | 'gridCellIntent'
+    | 'inlineEditorIntent'
+    | 'multilineEditorIntent'
+    | 'stringConversionIntent'
+    | 'exportIntent'
+    | 'clipboardIntent',
   editorTypes?: DataEditorTypesBehaviour,
   gridFormattingOptions?: { useThousandsSeparator?: boolean },
   jsonParsedValue?: any
@@ -202,6 +245,18 @@ export function stringifyCellValue(
       }
     }
   }
+  if (value?.$bigint) {
+    return {
+      value: value.$bigint,
+      gridStyle: 'valueCellStyle',
+    };
+  }
+  if (typeof value === 'bigint') {
+    return {
+      value: value.toString(),
+      gridStyle: 'valueCellStyle',
+    };
+  }
 
   if (editorTypes?.parseDateAsDollar) {
     if (value?.$date) {
@@ -209,6 +264,7 @@ export function stringifyCellValue(
       switch (intent) {
         case 'exportIntent':
         case 'stringConversionIntent':
+        case 'clipboardIntent':
           return { value: dateString };
         default:
           const m = dateString.match(dateTimeStorageRegex);
@@ -218,6 +274,32 @@ export function stringifyCellValue(
             return { value: dateString.replace('T', ' '), gridStyle: 'valueCellStyle' };
           }
       }
+    }
+  }
+
+  if (editorTypes?.parseGeopointAsDollar) {
+    if (value?.$geoPoint) {
+      const { latitude, longitude } = value.$geoPoint;
+      if (_isNumber(latitude) && _isNumber(longitude)) {
+        const latAbs = Math.abs(latitude);
+        const lonAbs = Math.abs(longitude);
+        const latDir = latitude >= 0 ? 'N' : 'S';
+        const lonDir = longitude >= 0 ? 'E' : 'W';
+
+        return {
+          value: `${latAbs}° ${latDir}, ${lonAbs}° ${lonDir}`,
+          gridStyle: 'valueCellStyle',
+        };
+      }
+    }
+  }
+
+  if (editorTypes?.parseFsDocumentRefAsDollar) {
+    if (value?.$fsDocumentRef) {
+      return {
+        value: `$ref: ${value.$fsDocumentRef.documentPath ?? ''}`,
+        gridStyle: 'valueCellStyle',
+      };
     }
   }
 
@@ -274,7 +356,9 @@ export function stringifyCellValue(
               };
             }
           }
-          return { value: highlightSpecialCharacters(value), gridStyle: 'textCellStyle' };
+          const valueLimited =
+            value.length > MAX_GRID_TEXT_LENGTH ? value.substring(0, MAX_GRID_TEXT_LENGTH) + '...' : value;
+          return { value: highlightSpecialCharacters(valueLimited), gridStyle: 'textCellStyle' };
         }
       default:
         return { value: value };
@@ -336,6 +420,9 @@ export function shouldOpenMultilineDialog(value) {
   if (value?.$date) {
     return false;
   }
+  if (value?.$bigint) {
+    return false;
+  }
   if (_isPlainObject(value) || _isArray(value)) {
     return true;
   }
@@ -343,7 +430,7 @@ export function shouldOpenMultilineDialog(value) {
 }
 
 export function isJsonLikeLongString(value) {
-  return _isString(value) && value.length > 100 && value.match(/^\s*\{.*\}\s*$|^\s*\[.*\]\s*$/);
+  return _isString(value) && value.length > 100 && value.match(/^\s*\{.*\}\s*$|^\s*\[.*\]\s*$/m);
 }
 
 export function getIconForRedisType(type) {
@@ -548,4 +635,102 @@ export function pinoLogRecordToMessageRecord(logRecord, defaultSeverity = 'info'
     message: msg,
     severity: levelToSeverity[level] ?? defaultSeverity,
   };
+}
+
+export function jsonLinesStringify(jsonArray: any[]): string {
+  return jsonArray.map(json => JSON.stringify(json)).join('\n');
+}
+export function jsonLinesParse(jsonLines: string): any[] {
+  return jsonLines
+    .split('\n')
+    .filter(x => x.trim())
+    .map(line => {
+      try {
+        return JSON.parse(line);
+      } catch (e) {
+        return null;
+      }
+    })
+    .filter(x => x);
+}
+
+export function serializeJsTypesForJsonStringify(obj, replacer = null) {
+  return _cloneDeepWith(obj, value => {
+    if (typeof value === 'bigint') {
+      return { $bigint: value.toString() };
+    }
+    if (replacer) {
+      return replacer(value);
+    }
+  });
+}
+
+export function deserializeJsTypesFromJsonParse(obj) {
+  return _cloneDeepWith(obj, value => {
+    if (value?.$bigint) {
+      return BigInt(value.$bigint);
+    }
+  });
+}
+
+export function serializeJsTypesReplacer(key, value) {
+  if (typeof value === 'bigint') {
+    return { $bigint: value.toString() };
+  }
+  return value;
+}
+
+export function deserializeJsTypesReviver(key, value) {
+  if (value?.$bigint) {
+    return BigInt(value.$bigint);
+  }
+  return value;
+}
+
+export function parseNumberSafe(value) {
+  if (/^-?[0-9]+$/.test(value)) {
+    const parsed = parseInt(value);
+    if (Number.isSafeInteger(parsed)) {
+      return parsed;
+    }
+    return BigInt(value);
+  }
+  return parseFloat(value);
+}
+
+const frontMatterRe = /^--\ >>>[ \t\r]*\n(.*)\n-- <<<[ \t\r]*\n/s;
+
+export function getSqlFrontMatter(text: string, yamlModule) {
+  if (!text || !_isString(text)) return null;
+  const match = text.match(frontMatterRe);
+  if (!match) return null;
+  const yamlContentMapped = match[1].replace(/^--[ ]?/gm, '');
+  return yamlModule.load(yamlContentMapped);
+}
+
+export function removeSqlFrontMatter(text: string) {
+  if (!text || !_isString(text)) return null;
+  return text.replace(frontMatterRe, '');
+}
+
+export function setSqlFrontMatter(text: string, data: { [key: string]: any }, yamlModule) {
+  const textClean = removeSqlFrontMatter(text);
+
+  if (!isPlainObject(data)) {
+    return textClean;
+  }
+
+  const dataClean = _omitBy(data, v => v === undefined);
+
+  if (_isEmpty(dataClean)) {
+    return textClean;
+  }
+  const yamlContent = yamlModule.dump(dataClean);
+  const yamlContentMapped = yamlContent
+    .trimRight()
+    .split('\n')
+    .map(line => '-- ' + line)
+    .join('\n');
+  const frontMatterContent = `-- >>>\n${yamlContentMapped}\n-- <<<\n`;
+  return frontMatterContent + (textClean || '');
 }

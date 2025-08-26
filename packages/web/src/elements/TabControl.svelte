@@ -15,7 +15,13 @@
   export let menu = null;
   export let isInline = false;
   export let containerMaxWidth = undefined;
+  export let containerMaxHeight = undefined;
   export let flex1 = true;
+  export let flexColContainer = true;
+  export let maxHeight100 = false;
+  export let contentTestId = undefined;
+  export let inlineTabs = false;
+  export let onUserChange = null;
 
   export function setValue(index) {
     value = index;
@@ -25,11 +31,19 @@
   }
 </script>
 
-<div class="main" class:flex1>
-  <div class="tabs">
+<div class="main" class:maxHeight100 class:flex1>
+  <div class="tabs" class:inlineTabs>
     {#each _.compact(tabs) as tab, index}
-      <div class="tab-item" class:selected={value == index} on:click={() => (value = index)} data-testid={tab.testid}>
-        <span class="ml-2">
+      <div
+        class="tab-item"
+        class:selected={value == index}
+        on:click={() => {
+          value = index;
+          onUserChange?.(index);
+        }}
+        data-testid={tab.testid}
+      >
+        <span class="ml-2 noselect">
           {tab.label}
         </span>
       </div>
@@ -39,10 +53,22 @@
     {/if}
   </div>
 
-  <div class="content-container">
+  <div class="content-container" style:max-height={containerMaxHeight} data-testid={contentTestId}>
     {#each _.compact(tabs) as tab, index}
-      <div class="container" class:isInline class:tabVisible={index == value} style:max-width={containerMaxWidth}>
-        <svelte:component this={tab.component} {...tab.props} tabControlHiddenTab={index != value} />
+      <div
+        class="container"
+        class:flexColContainer
+        class:maxHeight100
+        class:isInline
+        class:tabVisible={index == value}
+        style:max-width={containerMaxWidth}
+      >
+        <svelte:component
+          this={tab.component}
+          {...tab.props}
+          tabVisible={index == value}
+          tabControlHiddenTab={index != value}
+        />
         {#if tab.slot != null}
           {#if tab.slot == 0}<slot name="0" />
           {:else if tab.slot == 1}<slot name="1" />
@@ -52,6 +78,8 @@
           {:else if tab.slot == 5}<slot name="5" />
           {:else if tab.slot == 6}<slot name="6" />
           {:else if tab.slot == 7}<slot name="7" />
+          {:else if tab.slot == 8}<slot name="8" />
+          {:else if tab.slot == 9}<slot name="9" />
           {/if}
         {/if}
       </div>
@@ -70,27 +98,45 @@
     max-width: 100%;
   }
 
+  .main.maxHeight100 {
+    max-height: 100%;
+  }
+
   .tabs {
     display: flex;
     height: var(--dim-tabs-height);
     min-height: var(--dim-tabs-height);
     right: 0;
-    background-color: var(--theme-bg-2);
     overflow-x: auto;
     max-width: 100%;
   }
 
+  .tabs:not(.inlineTabs) {
+    background-color: var(--theme-bg-2);
+  }
+
+  .tabs.inlineTabs {
+    border-bottom: 1px solid var(--theme-border);
+    text-transform: uppercase;
+  }
+
+  .tabs.inlineTabs .tab-item.selected {
+    border-bottom: 2px solid var(--theme-font-link);
+  }
   .tabs::-webkit-scrollbar {
     height: 7px;
   }
 
   .tab-item {
-    border-right: 1px solid var(--theme-border);
     padding-left: 15px;
     padding-right: 15px;
     display: flex;
     align-items: center;
     cursor: pointer;
+  }
+
+  .tabs:not(.inlineTabs) .tab-item {
+    border-right: 1px solid var(--theme-border);
   }
 
   /* .tab-item:hover {
@@ -103,6 +149,15 @@
   .content-container {
     flex: 1;
     position: relative;
+  }
+
+  .container.maxHeight100 {
+    max-height: 100%;
+  }
+
+  .container.flexColContainer {
+    display: flex;
+    flex-direction: column;
   }
 
   .container:not(.isInline) {

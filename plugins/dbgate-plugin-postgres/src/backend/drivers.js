@@ -6,6 +6,7 @@ const Analyser = require('./Analyser');
 const wkx = require('wkx');
 const pg = require('pg');
 const pgCopyStreams = require('pg-copy-streams');
+const sql = require('./sql');
 const {
   getLogger,
   createBulkInsertStreamBase,
@@ -21,6 +22,11 @@ const logger = getLogger('postreDriver');
 pg.types.setTypeParser(1082, 'text', val => val); // date
 pg.types.setTypeParser(1114, 'text', val => val); // timestamp without timezone
 pg.types.setTypeParser(1184, 'text', val => val); // timestamp
+pg.types.setTypeParser(20, 'text', val => {
+  const parsed = parseInt(val);
+  if (Number.isSafeInteger(parsed)) return parsed;
+  return BigInt(val);
+}); // timestamp
 
 function extractGeographyDate(value) {
   try {
@@ -73,6 +79,7 @@ const drivers = driverBases.map(driverBase => ({
 
   async connect(props) {
     const {
+      conid,
       engine,
       server,
       port,
@@ -132,6 +139,7 @@ const drivers = driverBases.map(driverBase => ({
     const dbhan = {
       client,
       database,
+      conid,
     };
 
     const datatypes = await this.query(dbhan, `SELECT oid, typname FROM pg_type WHERE typname in ('geography')`);
@@ -159,6 +167,17 @@ const drivers = driverBases.map(driverBase => ({
     return { rows: (res.rows || []).map(row => zipDataRow(row, columns)), columns };
   },
   stream(dbhan, sql, options) {
+    const handleNotice = notice => {
+      const { message, where } = notice;
+      options.info({
+        message,
+        procedure: where,
+        time: new Date(),
+        severity: 'info',
+        detail: notice,
+      });
+    };
+
     const query = new pg.Query({
       text: sql,
       rowMode: 'array',
@@ -166,6 +185,7 @@ const drivers = driverBases.map(driverBase => ({
 
     let wasHeader = false;
     let columnsToTransform = null;
+    dbhan.client.on('notice', handleNotice);
 
     query.on('row', row => {
       if (!wasHeader) {
@@ -206,11 +226,12 @@ const drivers = driverBases.map(driverBase => ({
         wasHeader = true;
       }
 
+      dbhan.client.off('notice', handleNotice);
       options.done();
     });
 
     query.on('error', error => {
-      logger.error(extractErrorLogData(error), 'Stream error');
+      logger.error(extractErrorLogData(error, this.getLogDbInfo(dbhan)), 'DBGM-00201 Stream error');
       const { message, position, procName } = error;
       let line = null;
       if (position) {
@@ -223,6 +244,7 @@ const drivers = driverBases.map(driverBase => ({
         time: new Date(),
         severity: 'error',
       });
+      dbhan.client.off('notice', handleNotice);
       options.done();
     });
 
@@ -330,9 +352,63 @@ const drivers = driverBases.map(driverBase => ({
     // @ts-ignore
     return createBulkInsertStreamBase(this, stream, dbhan, name, options);
   },
+
+  async serverSummary(dbhan) {
+    const [processes, variables, databases] = await Promise.all([
+      this.listProcesses(dbhan),
+      this.listVariables(dbhan),
+      this.listDatabases(dbhan),
+    ]);
+
+    /** @type {import('dbgate-types').ServerSummary} */
+    const data = {
+      processes,
+      variables,
+      databases: {
+        rows: databases,
+        columns: [
+          { header: 'Name', fieldName: 'name', type: 'data' },
+          { header: 'Size on disk', fieldName: 'sizeOnDisk', type: 'fileSize' },
+        ],
+      },
+    };
+
+    return data;
+  },
+
+  async killProcess(dbhan, pid) {
+    const result = await this.query(dbhan, `SELECT pg_terminate_backend(${parseInt(pid)})`);
+    return result;
+  },
+
   async listDatabases(dbhan) {
-    const { rows } = await this.query(dbhan, 'SELECT datname AS name FROM pg_database WHERE datistemplate = false');
+    const { rows } = await this.query(dbhan, sql.listDatabases);
     return rows;
+  },
+
+  async listVariables(dbhan) {
+    const result = await this.query(dbhan, sql.listVariables);
+    return result.rows.map(row => ({
+      variable: row.variable,
+      value: row.value,
+    }));
+  },
+
+  async listProcesses(dbhan) {
+    const result = await this.query(dbhan, sql.listProcesses);
+    return result.rows.map(row => ({
+      processId: row.processId,
+      connectionId: row.connectionId,
+      client: row.client,
+      operation: row.operation,
+      namespace: null,
+      command: row.operation,
+      runningTime: row.runningTime ? Math.max(Number(row.runningTime), 0) : null,
+      state: row.state,
+      waitingFor: row.waitingFor,
+      locks: null,
+      progress: null,
+    }));
   },
 
   getAuthTypes() {
@@ -363,7 +439,7 @@ const drivers = driverBases.map(driverBase => ({
     const defaultSchemaRows = await this.query(dbhan, 'SELECT current_schema');
     const defaultSchema = defaultSchemaRows.rows[0]?.current_schema?.trim();
 
-    logger.debug(`Loaded ${schemaRows.rows.length} postgres schemas`);
+    logger.debug(this.getLogDbInfo(dbhan), `DBGM-00142 Loaded ${schemaRows.rows.length} postgres schemas`);
 
     const schemas = schemaRows.rows.map(x => ({
       schemaName: x.schema_name,

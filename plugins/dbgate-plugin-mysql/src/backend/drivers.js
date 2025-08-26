@@ -5,7 +5,6 @@ const Analyser = require('./Analyser');
 const mysql2 = require('mysql2');
 const { getLogger, createBulkInsertStreamBase, makeUniqueColumnNames, extractErrorLogData } =
   global.DBGATE_PACKAGES['dbgate-tools'];
-const { MySqlDumper } = require('antares-mysql-dumper');
 
 const logger = getLogger('mysqlDriver');
 
@@ -35,7 +34,8 @@ const drivers = driverBases.map(driverBase => ({
   analyserClass: Analyser,
 
   async connect(props) {
-    const { server, port, user, password, database, ssl, isReadOnly, forceRowsAsObjects, socketPath, authType } = props;
+    const { conid, server, port, user, password, database, ssl, isReadOnly, forceRowsAsObjects, socketPath, authType } =
+      props;
     let awsIamToken = null;
     if (authType == 'awsIam') {
       awsIamToken = await authProxy.getAwsIamToken(props);
@@ -61,6 +61,7 @@ const drivers = driverBases.map(driverBase => ({
     const dbhan = {
       client,
       database,
+      conid,
     };
     if (isReadOnly) {
       await this.query(dbhan, 'SET SESSION TRANSACTION READ ONLY');
@@ -139,7 +140,7 @@ const drivers = driverBases.map(driverBase => ({
     };
 
     const handleError = error => {
-      logger.error(extractErrorLogData(error), 'Stream error');
+      logger.error(extractErrorLogData(error, this.getLogDbInfo(dbhan)), 'DBGM-00200 Stream error');
       const { message } = error;
       options.info({
         message,
@@ -199,18 +200,72 @@ const drivers = driverBases.map(driverBase => ({
     const { rows } = await this.query(dbhan, 'show databases');
     return rows.map(x => ({ name: x.Database }));
   },
+
+  async listVariables(dbhan) {
+    const { rows } = await this.query(dbhan, 'SHOW VARIABLES');
+    return rows.map(row => ({
+      variable: row.Variable_name,
+      value: row.Value,
+    }));
+  },
+
+  async listProcesses(dbhan) {
+    const { rows } = await this.query(dbhan, 'SHOW FULL PROCESSLIST');
+    return rows.map(row => ({
+      processId: row.Id,
+      connectionId: null,
+      client: row.Host,
+      operation: row.Info,
+      namespace: row.Database,
+      runningTime: row.Time,
+      state: row.State,
+      waitingFor: row.State && row.State.includes('Waiting'),
+    }));
+  },
+
+  async killProcess(dbhan, processId) {
+    await this.query(dbhan, `KILL ${processId}`);
+  },
+
+  async serverSummary(dbhan) {
+    const [variables, processes, databases] = await Promise.all([
+      this.listVariables(dbhan),
+      this.listProcesses(dbhan),
+      this.listDatabases(dbhan),
+    ]);
+
+    return {
+      variables,
+      processes: processes.map(p => ({
+        processId: p.processId,
+        connectionId: p.connectionId,
+        client: p.client,
+        operation: p.operation,
+        namespace: p.namespace,
+        runningTime: p.runningTime,
+        state: p.state,
+        waitingFor: p.waitingFor,
+      })),
+      databases: {
+        rows: databases.map(db => ({
+          name: db.name,
+        })),
+        columns: [
+          {
+            filterable: true,
+            sortable: true,
+            header: 'Database',
+            fieldName: 'name',
+            type: 'data',
+          },
+        ],
+      },
+    };
+  },
+
   async writeTable(dbhan, name, options) {
     // @ts-ignore
     return createBulkInsertStreamBase(this, stream, dbhan, name, options);
-  },
-  async createBackupDumper(dbhan, options) {
-    const { outputFile, databaseName, schemaName } = options;
-    const res = new MySqlDumper({
-      connection: dbhan.client,
-      schema: databaseName || schemaName,
-      outputFile,
-    });
-    return res;
   },
   getAuthTypes() {
     const res = [

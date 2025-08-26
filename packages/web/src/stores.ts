@@ -26,11 +26,29 @@ export interface TabDefinition {
   focused?: boolean;
 }
 
-export function writableWithStorage<T>(defaultValue: T, storageName) {
+const darkModeMediaQuery = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+
+export const systemThemeStore = writable(darkModeMediaQuery?.matches ? 'theme-dark' : 'theme-light');
+
+if (darkModeMediaQuery) {
+  darkModeMediaQuery.addEventListener('change', e => {
+    systemThemeStore.set(e.matches ? 'theme-dark' : 'theme-light');
+  });
+}
+
+export function getSystemTheme() {
+  return darkModeMediaQuery?.matches ? 'theme-dark' : 'theme-light';
+}
+
+export function writableWithStorage<T>(defaultValue: T, storageName, removeCondition?: (value: T) => boolean) {
   const init = localStorage.getItem(storageName);
   const res = writable<T>(init ? safeJsonParse(init, defaultValue, true) : defaultValue);
   res.subscribe(value => {
-    localStorage.setItem(storageName, JSON.stringify(value));
+    if (removeCondition && removeCondition(value)) {
+      localStorage.removeItem(storageName);
+    } else {
+      localStorage.setItem(storageName, JSON.stringify(value));
+    }
   });
   return res;
 }
@@ -100,8 +118,8 @@ export const extensions = writable<ExtensionsDirectory>(null);
 export const visibleCommandPalette = writable(null);
 export const commands = writable({});
 export const currentTheme = getElectron()
-  ? writableSettingsValue('theme-light', 'currentTheme')
-  : writableWithStorage('theme-light', 'currentTheme');
+  ? writableSettingsValue(null, 'currentTheme')
+  : writableWithStorage(null, 'currentTheme', x => x == null);
 export const currentEditorTheme = getElectron()
   ? writableSettingsValue(null, 'currentEditorTheme')
   : writableWithStorage(null, 'currentEditorTheme');
@@ -164,6 +182,10 @@ export const focusedConnectionOrDatabase = writable<{ conid: string; database?: 
 
 export const focusedTreeDbKey = writable<{ key: string; root: string; type: string; text: string }>(null);
 
+export const cloudSigninTokenHolder = writableSettingsValue(null, 'cloudSigninTokenHolder');
+
+export const cloudConnectionsStore = writable({});
+
 export const DEFAULT_OBJECT_SEARCH_SETTINGS = {
   pureName: true,
   schemaName: false,
@@ -193,9 +215,28 @@ export const connectionAppObjectSearchSettings = writableWithStorage(
   'connectionAppObjectSearchSettings2'
 );
 
-export const currentThemeDefinition = derived([currentTheme, extensions], ([$currentTheme, $extensions]) =>
-  $extensions.themes.find(x => x.themeClassName == $currentTheme)
+export const serverSummarySelectedTab = writableWithStorage(0, 'serverSummary.selectedTab');
+
+let currentThemeValue = null;
+currentTheme.subscribe(value => {
+  currentThemeValue = value;
+});
+export const getCurrentTheme = () => currentThemeValue;
+
+export const currentThemeDefinition = derived(
+  [currentTheme, extensions, systemThemeStore],
+  ([$currentTheme, $extensions, $systemTheme]) => {
+    const usedTheme = $currentTheme ?? $systemTheme;
+    return $extensions?.themes?.find(x => x.themeClassName == usedTheme);
+  }
 );
+currentThemeDefinition.subscribe(value => {
+  if (value?.themeType && getCurrentTheme()) {
+    localStorage.setItem('currentThemeType', value?.themeType);
+  } else {
+    localStorage.removeItem('currentThemeType');
+  }
+});
 export const openedConnectionsWithTemporary = derived(
   [openedConnections, temporaryOpenedConnections, openedSingleDatabaseConnections],
   ([$openedConnections, $temporaryOpenedConnections, $openedSingleDatabaseConnections]) =>
@@ -417,5 +458,39 @@ focusedTreeDbKey.subscribe(value => {
   focusedTreeDbKeyValue = value;
 });
 export const getFocusedTreeDbKey = () => focusedTreeDbKeyValue;
+
+let cloudConnectionsStoreValue = {};
+cloudConnectionsStore.subscribe(value => {
+  cloudConnectionsStoreValue = value;
+});
+export const getCloudConnectionsStore = () => cloudConnectionsStoreValue;
+
+export const currentActiveCloudTags = derived(currentDatabase, $currentDatabase => {
+  if (!$currentDatabase || !$currentDatabase.connection) return [];
+  const engine = $currentDatabase.connection?.engine;
+  const [shortName, packageName] = engine.split('@');
+  const tags = [shortName];
+  const res = [...tags];
+
+  if (tags.includes('mariadb')) {
+    res.push('mysql');
+  }
+  if (tags.includes('mysql')) {
+    res.push('mariadb');
+  }
+  if (tags.includes('cockroach')) {
+    res.push('postgres');
+  }
+  if (tags.includes('libsql')) {
+    res.push('sqlite');
+  }
+  return res;
+});
+
+let cloudSigninTokenHolderValue = null;
+cloudSigninTokenHolder.subscribe(value => {
+  cloudSigninTokenHolderValue = value;
+});
+export const getCloudSigninTokenHolder = () => cloudSigninTokenHolderValue;
 
 window['__changeCurrentTheme'] = theme => currentTheme.set(theme);

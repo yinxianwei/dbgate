@@ -6,7 +6,6 @@ import * as QueryTab from './QueryTab.svelte';
 import * as ShellTab from './ShellTab.svelte';
 import * as ArchiveFileTab from './ArchiveFileTab.svelte';
 import * as PluginTab from './PluginTab.svelte';
-import * as ChartTab from './ChartTab.svelte';
 import * as MarkdownEditorTab from './MarkdownEditorTab.svelte';
 import * as MarkdownViewTab from './MarkdownViewTab.svelte';
 import * as MarkdownPreviewTab from './MarkdownPreviewTab.svelte';
@@ -23,10 +22,9 @@ import * as QueryDataTab from './QueryDataTab.svelte';
 import * as ConnectionTab from './ConnectionTab.svelte';
 import * as MapTab from './MapTab.svelte';
 import * as ServerSummaryTab from './ServerSummaryTab.svelte';
-import * as ProfilerTab from './ProfilerTab.svelte';
-import * as DataDuplicatorTab from './DataDuplicatorTab.svelte';
 import * as ImportExportTab from './ImportExportTab.svelte';
 import * as SqlObjectTab from './SqlObjectTab.svelte';
+import * as AppLogTab from './AppLogTab.svelte';
 
 import protabs from './index-pro';
 
@@ -39,7 +37,6 @@ export default {
   ShellTab,
   ArchiveFileTab,
   PluginTab,
-  ChartTab,
   MarkdownEditorTab,
   MarkdownViewTab,
   MarkdownPreviewTab,
@@ -56,9 +53,8 @@ export default {
   ConnectionTab,
   MapTab,
   ServerSummaryTab,
-  ProfilerTab,
-  DataDuplicatorTab,
   ImportExportTab,
   SqlObjectTab,
+  AppLogTab,
   ...protabs,
 };

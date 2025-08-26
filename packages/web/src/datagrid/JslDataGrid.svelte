@@ -8,6 +8,7 @@
 
   import DataGrid from './DataGrid.svelte';
   import JslDataGridCore from './JslDataGridCore.svelte';
+  import { useSettings } from '../utility/metadataLoaders';
 
   export let jslid;
   export let supportsReload = false;
@@ -20,7 +21,7 @@
   export let allowChangeChangeSetStructure = false;
   export let infoLoadCounter = 0;
 
-  export let driver;
+  export let driver = null;
 
   let loadedRows;
   let infoCounter = 0;
@@ -30,6 +31,7 @@
   // $: columns = ($info && $info.columns) || [];
   const config = writable(createGridConfig());
   const cache = writable(createGridCache());
+  const settingsValue = useSettings();
 
   function handleInitializeFile() {
     infoCounter += 1;
@@ -71,7 +73,8 @@
     infoUsed?.__isDynamicStructure,
     supportsReload,
     !!changeSetState,
-    driver
+    driver,
+    $settingsValue
   );
 
   function handleSetLoadedRows(rows) {

@@ -80,11 +80,12 @@
       );
     }
 
-    if (filterBehaviour.supportArrayTesting) {
-      res.push(
-        { onClick: () => setFilter('NOT EMPTY ARRAY'), text: 'Array is not empty' },
-        { onClick: () => setFilter('EMPTY ARRAY'), text: 'Array is empty' }
-      );
+    if (filterBehaviour.supportNotEmptyArrayTesting) {
+      res.push({ onClick: () => setFilter('NOT EMPTY ARRAY'), text: 'Array is not empty' });
+    }
+
+    if (filterBehaviour.supportEmptyArrayTesting) {
+      res.push({ onClick: () => setFilter('EMPTY ARRAY'), text: 'Array is empty' });
     }
 
     if (filterBehaviour.supportNullTesting) {
@@ -132,7 +133,7 @@
       );
     }
 
-    if (filterBehaviour.supportBooleanValues && filterBehaviour.supportNullTesting) {
+    if (filterBehaviour.supportBooleanOrNull) {
       res.push(
         { onClick: () => setFilter('TRUE, NULL'), text: 'Is True or NULL' },
         { onClick: () => setFilter('FALSE, NULL'), text: 'Is False or NULL' }
@@ -296,11 +297,21 @@
   {/if}
   {#if conid && database && driver}
     {#if driver?.databaseEngineTypes?.includes('sql') && foreignKey}
-      <InlineButton on:click={handleShowDictionary} narrow square>
+      <InlineButton
+        on:click={handleShowDictionary}
+        narrow
+        square
+        data-testid={`DataFilterControl_choosevalues_${uniqueName}`}
+      >
         <FontIcon icon="icon dots-horizontal" />
       </InlineButton>
     {:else if (pureName && columnName) || (pureName && uniqueName && driver?.databaseEngineTypes?.includes('document'))}
-      <InlineButton on:click={handleShowValuesModal} narrow square>
+      <InlineButton
+        on:click={handleShowValuesModal}
+        narrow
+        square
+        data-testid={`DataFilterControl_choosevalues_${uniqueName}`}
+      >
         <FontIcon icon="icon dots-vertical" />
       </InlineButton>
     {/if}
@@ -309,7 +320,12 @@
       <FontIcon icon="icon dots-vertical" />
     </InlineButton>
   {/if}
-  <DropDownButton icon="icon filter" menu={createMenu} narrow />
+  <DropDownButton
+    icon="icon filter"
+    menu={createMenu}
+    narrow
+    data-testid={`DataFilterControl_filtermenu_${uniqueName}`}
+  />
   {#if showResizeSplitter}
     <div class="horizontal-split-handle resizeHandleControl" use:splitterDrag={'clientX'} on:resizeSplitter />
   {/if}

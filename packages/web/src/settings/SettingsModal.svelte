@@ -16,7 +16,7 @@
   import FontIcon from '../icons/FontIcon.svelte';
 
   import ModalBase from '../modals/ModalBase.svelte';
-  import { closeCurrentModal } from '../modals/modalTools';
+  import { closeCurrentModal, showModal } from '../modals/modalTools';
   import { EDITOR_KEYBINDINGS_MODES, EDITOR_THEMES, FONT_SIZES } from '../query/AceEditor.svelte';
   import SqlEditor from '../query/SqlEditor.svelte';
   import {
@@ -28,6 +28,8 @@
     selectedWidget,
     lockedDatabaseMode,
     visibleWidgetSideBar,
+    currentTheme,
+    getSystemTheme,
   } from '../stores';
   import { isMac } from '../utility/common';
   import getElectron from '../utility/getElectron';
@@ -39,6 +41,9 @@
   import { derived } from 'svelte/store';
   import { safeFormatDate } from 'dbgate-tools';
   import FormDefaultActionField from './FormDefaultActionField.svelte';
+  import { _t, getSelectedLanguage } from '../translations';
+  import { internalRedirectTo } from '../clientAuth';
+  import ConfirmModal from '../modals/ConfirmModal.svelte';
 
   const electron = getElectron();
   let restartWarning = false;
@@ -101,6 +106,7 @@ ORDER BY
           { label: 'Themes', slot: 3 },
           { label: 'Default Actions', slot: 4 },
           { label: 'Behaviour', slot: 5 },
+          { label: 'External tools', slot: 8 },
           { label: 'Other', slot: 6 },
         ]}
       >
@@ -121,7 +127,32 @@ ORDER BY
             {/if}
           {/if}
 
-          <FormCheckboxField name="tabGroup.showServerName" label="Show server name alongside database name in title of the tab group" defaultValue={false} />
+          <FormCheckboxField
+            name="tabGroup.showServerName"
+            label="Show server name alongside database name in title of the tab group"
+            defaultValue={false}
+          />
+          <!-- <div class="heading">{_t('settings.localization', { defaultMessage: 'Localization' })}</div>
+          <FormSelectField
+            label="Language"
+            name="localization.language"
+            defaultValue={getSelectedLanguage()}
+            isNative
+            options={[
+              { value: 'en', label: 'English' },
+              { value: 'cs', label: 'Czech' },
+            ]}
+            on:change={() => {
+              showModal(ConfirmModal, {
+                message: 'Application will be reloaded to apply new language settings',
+                onConfirm: () => {
+                  setTimeout(() => {
+                    internalRedirectTo('/');
+                  }, 100);
+                },
+              });
+            }}
+          /> -->
 
           <div class="heading">Data grid</div>
           <FormTextField
@@ -161,6 +192,12 @@ ORDER BY
             ]}
           />
 
+          <FormCheckboxField
+            name="dataGrid.showAllColumnsWhenSearch"
+            label="Show all columns when searching"
+            defaultValue={false}
+          />
+
           <div class="heading">SQL editor</div>
 
           <div class="flex">
@@ -196,6 +233,24 @@ ORDER BY
               </FormFieldTemplateLarge>
             </div>
           </div>
+
+          <FormTextField
+            name="sqlEditor.limitRows"
+            label="Return only N rows from query"
+            placeholder="(No rows limit)"
+          />
+
+          <FormCheckboxField
+            name="sqlEditor.showTableAliasesInCodeCompletion"
+            label="Show table aliases in code completion"
+            defaultValue={false}
+          />
+
+          <FormCheckboxField
+            name="sqlEditor.disableSplitByEmptyLine"
+            label="Disable split by empty line"
+            defaultValue={false}
+          />
         </svelte:fragment>
         <svelte:fragment slot="2">
           <div class="heading">Connection</div>
@@ -251,6 +306,32 @@ ORDER BY
 
         <svelte:fragment slot="3">
           <div class="heading">Application theme</div>
+
+          <FormFieldTemplateLarge
+            label="Use system theme"
+            type="checkbox"
+            labelProps={{
+              onClick: () => {
+                if ($currentTheme) {
+                  $currentTheme = null;
+                } else {
+                  $currentTheme = getSystemTheme();
+                }
+              },
+            }}
+          >
+            <CheckboxField
+              checked={!$currentTheme}
+              on:change={e => {
+                if (e.target['checked']) {
+                  $currentTheme = null;
+                } else {
+                  $currentTheme = getSystemTheme();
+                }
+              }}
+            />
+          </FormFieldTemplateLarge>
+
           <div class="themes">
             {#each $extensions.themes as theme}
               <ThemeSkeleton {theme} />
@@ -374,6 +455,12 @@ ORDER BY
 
           <FormCheckboxField name="behaviour.useTabPreviewMode" label="Use tab preview mode" defaultValue={true} />
 
+          <FormCheckboxField
+            name="behaviour.jsonPreviewWrap"
+            label={_t('settings.behaviour.jsonPreviewWrap', { defaultMessage: 'Wrap JSON in preview' })}
+            defaultValue={false}
+          />
+
           <div class="tip">
             <FontIcon icon="img tip" /> When you single-click or select a file in the "Tables, Views, Functions" view, it
             is shown in a preview mode and reuses an existing tab (preview tab). This is useful if you are quickly browsing
@@ -447,10 +534,51 @@ ORDER BY
                   <div>License key expiration: <b>{safeFormatDate(licenseKeyCheckResult.expiration)}</b></div>
                 {/if}
               {:else if licenseKeyCheckResult.status == 'error'}
-                <FontIcon icon="img error" /> License key is invalid
+                <div>
+                  <FontIcon icon="img error" />
+                  {licenseKeyCheckResult.errorMessage ?? 'License key is invalid'}
+                  {#if licenseKeyCheckResult.expiration}
+                    <div>License key expiration: <b>{safeFormatDate(licenseKeyCheckResult.expiration)}</b></div>
+                  {/if}
+                </div>
+                {#if licenseKeyCheckResult.isExpired}
+                  <div class="mt-2">
+                    <FormStyledButton
+                      value="Check for new license key"
+                      skipWidth
+                      on:click={async () => {
+                        licenseKeyCheckResult = await apiCall('config/get-new-license', { oldLicenseKey: licenseKey });
+                        if (licenseKeyCheckResult.licenseKey) {
+                          apiCall('config/update-settings', { 'other.licenseKey': licenseKeyCheckResult.licenseKey });
+                        }
+                      }}
+                    />
+                  </div>
+                {/if}
               {/if}
             </div>
           {/if}
+        </svelte:fragment>
+
+        <svelte:fragment slot="8">
+          <div class="heading">External tools</div>
+          <FormTextField
+            name="externalTools.mysqldump"
+            label="mysqldump (backup MySQL database)"
+            defaultValue="mysqldump"
+          />
+          <FormTextField name="externalTools.mysql" label="mysql (restore MySQL database)" defaultValue="mysql" />
+          <FormTextField
+            name="externalTools.mysqlPlugins"
+            label="Folder with mysql plugins (for example for authentication). Set only in case of problems"
+            defaultValue=""
+          />
+          <FormTextField
+            name="externalTools.pg_dump"
+            label="pg_dump (backup PostgreSQL database)"
+            defaultValue="pg_dump"
+          />
+          <FormTextField name="externalTools.psql" label="psql (restore PostgreSQL database)" defaultValue="psql" />
         </svelte:fragment>
       </TabControl>
     </FormValues>

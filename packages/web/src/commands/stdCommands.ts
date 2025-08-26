@@ -1,9 +1,11 @@
 import {
+  cloudSigninTokenHolder,
   currentDatabase,
   currentTheme,
   emptyConnectionGroupNames,
   extensions,
   getAppUpdaterActive,
+  getCloudSigninTokenHolder,
   getExtensions,
   getVisibleToolbar,
   visibleToolbar,
@@ -46,6 +48,8 @@ import { openImportExportTab } from '../utility/importExportTools';
 import newTable from '../tableeditor/newTable';
 import { isProApp } from '../utility/proTools';
 import { openWebLink } from '../utility/simpleTools';
+import { _t } from '../translations';
+import ExportImportConnectionsModal from '../modals/ExportImportConnectionsModal.svelte';
 
 // function themeCommand(theme: ThemeDefinition) {
 //   return {
@@ -117,6 +121,28 @@ registerCommand({
       title: 'New Connection',
       icon: 'img connection',
       tabComponent: 'ConnectionTab',
+    });
+  },
+});
+
+registerCommand({
+  id: 'new.connectionOnCloud',
+  toolbar: true,
+  icon: 'img cloud-connection',
+  toolbarName: 'Add connection',
+  category: 'New',
+  toolbarOrder: 1,
+  name: 'Connection on Cloud',
+  testEnabled: () =>
+    !getCurrentConfig()?.runAsPortal && !getCurrentConfig()?.storageDatabase && !!getCloudSigninTokenHolder(),
+  onClick: () => {
+    openNewTab({
+      title: 'New Connection on Cloud',
+      icon: 'img cloud-connection',
+      tabComponent: 'ConnectionTab',
+      props: {
+        saveOnCloud: true,
+      },
     });
   },
 });
@@ -296,6 +322,7 @@ registerCommand({
   toolbar: true,
   toolbarName: 'New table',
   testEnabled: () => {
+    if (!hasPermission('dbops/model/edit')) return false;
     const driver = findEngineDriver(get(currentDatabase)?.connection, getExtensions());
     return !!get(currentDatabase) && driver?.databaseEngineTypes?.includes('sql');
   },
@@ -389,16 +416,36 @@ registerCommand({
   category: 'New',
   icon: 'img sqlite-database',
   name: 'SQLite database',
-  menuName: 'New SQLite database',
+  menuName: _t('command.new.sqliteDatabase', { defaultMessage: 'New SQLite database' }),
   onClick: () => {
     showModal(InputTextModal, {
       value: 'newdb',
-      label: 'New database name',
-      header: 'Create SQLite database',
+      label: _t('app.databaseName', { defaultMessage: 'Database name' }),
+      header: _t('command.new.sqliteDatabase', { defaultMessage: 'New SQLite database' }),
       onConfirm: async file => {
         const resp = await apiCall('connections/new-sqlite-database', { file });
         const connection = resp;
         switchCurrentDatabase({ connection, name: `${file}.sqlite` });
+      },
+    });
+  },
+});
+
+registerCommand({
+  id: 'new.duckdbDatabase',
+  category: 'New',
+  icon: 'img sqlite-database',
+  name: 'DuckDB database',
+  menuName: _t('command.new.duckdbDatabase', { defaultMessage: 'New DuckDB database' }),
+  onClick: () => {
+    showModal(InputTextModal, {
+      value: 'newdb',
+      label: _t('app.databaseName', { defaultMessage: 'Database name' }),
+      header: _t('command.new.duckdbDatabase', { defaultMessage: 'New DuckDB database' }),
+      onConfirm: async file => {
+        const resp = await apiCall('connections/new-duckdb-database', { file });
+        const connection = resp;
+        switchCurrentDatabase({ connection, name: `${file}.duckdb` });
       },
     });
   },
@@ -510,6 +557,44 @@ registerCommand({
 });
 
 registerCommand({
+  id: 'app.exportConnections',
+  category: 'Settings',
+  name: 'Export connections',
+  testEnabled: () => !getCurrentConfig()?.runAsPortal && !getCurrentConfig()?.storageDatabase,
+  onClick: () => {
+    showModal(ExportImportConnectionsModal, {
+      mode: 'export',
+    });
+  },
+});
+
+registerCommand({
+  id: 'app.importConnections',
+  category: 'Settings',
+  name: 'Import connections',
+  testEnabled: () => !getCurrentConfig()?.runAsPortal && !getCurrentConfig()?.storageDatabase,
+  onClick: async () => {
+    const files = await electron.showOpenDialog({
+      properties: ['showHiddenFiles', 'openFile'],
+      filters: [
+        {
+          name: `All supported files`,
+          extensions: ['zip'],
+        },
+        { name: `ZIP files`, extensions: ['zip'] },
+      ],
+    });
+
+    if (files?.length > 0) {
+      showModal(ExportImportConnectionsModal, {
+        mode: 'import',
+        uploadedFilePath: files[0],
+      });
+    }
+  },
+});
+
+registerCommand({
   id: 'file.import',
   category: 'File',
   name: 'Import data',
@@ -570,13 +655,91 @@ registerCommand({
   name: 'SQL Generator',
   toolbar: true,
   icon: 'icon sql-generator',
-  testEnabled: () => getCurrentDatabase() != null && hasPermission(`dbops/sql-generator`),
+  testEnabled: () =>
+    getCurrentDatabase() != null &&
+    hasPermission(`dbops/sql-generator`) &&
+    findEngineDriver(getCurrentDatabase()?.connection, getExtensions())?.databaseEngineTypes?.includes('sql'),
   onClick: () =>
     showModal(SqlGeneratorModal, {
       conid: getCurrentDatabase()?.connection?._id,
       database: getCurrentDatabase()?.name,
     }),
 });
+
+registerCommand({
+  id: 'database.export',
+  category: 'Database',
+  name: 'Export database',
+  toolbar: true,
+  icon: 'icon export',
+  testEnabled: () => getCurrentDatabase() != null && hasPermission(`dbops/export`),
+  onClick: () => {
+    openImportExportTab({
+      targetStorageType: getDefaultFileFormat(getExtensions()).storageType,
+      sourceStorageType: 'database',
+      sourceConnectionId: getCurrentDatabase()?.connection?._id,
+      sourceDatabaseName: getCurrentDatabase()?.name,
+    });
+  },
+});
+
+if (isProApp()) {
+  registerCommand({
+    id: 'database.compare',
+    category: 'Database',
+    name: 'Compare databases',
+    toolbar: true,
+    icon: 'icon compare',
+    testEnabled: () =>
+      getCurrentDatabase() != null &&
+      findEngineDriver(getCurrentDatabase()?.connection, getExtensions())?.databaseEngineTypes?.includes('sql')
+      && hasPermission(`dbops/export`),
+    onClick: () => {
+      openNewTab(
+        {
+          title: 'Compare',
+          icon: 'img compare',
+          tabComponent: 'CompareModelTab',
+          props: {
+            conid: getCurrentDatabase()?.connection?._id,
+            database: getCurrentDatabase()?.name,
+          },
+        },
+        {
+          editor: {
+            sourceConid: getCurrentDatabase()?.connection?._id,
+            sourceDatabase: getCurrentDatabase()?.name,
+            targetConid: getCurrentDatabase()?.connection?._id,
+            targetDatabase: getCurrentDatabase()?.name,
+          },
+        }
+      );
+    },
+  });
+
+  registerCommand({
+    id: 'database.chat',
+    category: 'Database',
+    name: 'Database chat',
+    toolbar: true,
+    icon: 'icon ai',
+    testEnabled: () =>
+      getCurrentDatabase() != null &&
+      findEngineDriver(getCurrentDatabase()?.connection, getExtensions())?.databaseEngineTypes?.includes('sql') &&
+      hasPermission('dbops/chat'),
+    onClick: () => {
+      openNewTab({
+        title: 'Chat',
+        icon: 'img ai',
+        tabComponent: 'DatabaseChatTab',
+        props: {
+          conid: getCurrentDatabase()?.connection?._id,
+          database: getCurrentDatabase()?.name,
+        },
+      });
+    },
+  });
+}
 
 if (hasPermission('settings/change')) {
   registerCommand({
@@ -603,6 +766,15 @@ if (hasPermission('settings/change')) {
 }
 
 registerCommand({
+  id: 'cloud.logout',
+  category: 'Cloud',
+  name: 'Logout',
+  onClick: () => {
+    cloudSigninTokenHolder.set(null);
+  },
+});
+
+registerCommand({
   id: 'file.exit',
   category: 'File',
   name: isMac() ? 'Quit' : 'Exit',
@@ -617,6 +789,24 @@ registerCommand({
   name: 'Logout',
   testEnabled: () => getCurrentConfig()?.isUserLoggedIn,
   onClick: doLogout,
+});
+
+registerCommand({
+  id: 'app.loggedUserCommands',
+  category: 'App',
+  name: 'Logged user',
+  getSubCommands: () => {
+    const config = getCurrentConfig();
+    if (!config) return [];
+    return [
+      {
+        text: 'Logout',
+        onClick: () => {
+          doLogout();
+        },
+      },
+    ];
+  },
 });
 
 registerCommand({
@@ -830,14 +1020,14 @@ registerCommand({
   id: 'app.openDocs',
   category: 'Application',
   name: 'Documentation',
-  onClick: () => openWebLink('https://dbgate.org/docs/'),
+  onClick: () => openWebLink('https://docs.dbgate.io/'),
 });
 
 registerCommand({
   id: 'app.openWeb',
   category: 'Application',
   name: 'DbGate web',
-  onClick: () => openWebLink('https://dbgate.org'),
+  onClick: () => openWebLink('https://dbgate.io/'),
 });
 
 registerCommand({
@@ -851,7 +1041,15 @@ registerCommand({
   id: 'app.openSponsoring',
   category: 'Application',
   name: 'Become sponsor',
+  testEnabled: () => !isProApp(),
   onClick: () => openWebLink('https://opencollective.com/dbgate'),
+});
+
+registerCommand({
+  id: 'app.giveFeedback',
+  category: 'Application',
+  name: 'Give us feedback',
+  onClick: () => openWebLink('https://dbgate.org/feedback'),
 });
 
 registerCommand({

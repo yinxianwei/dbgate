@@ -1,4 +1,6 @@
 <script lang="ts" context="module">
+  import { _t } from '../translations';
+
   const getCurrentValueMarker: any = {};
 
   export function shouldShowTab(tab, lockedDbModeArg = getCurrentValueMarker, currentDbArg = getCurrentValueMarker) {
@@ -183,12 +185,13 @@
     );
   };
 
-  function getTabDbName(tab, connectionList) {
-    if (tab.tabComponent == 'ConnectionTab') return 'Connections';
-    if (tab.tabComponent?.startsWith('Admin')) return 'Administration';
+  function getTabDbName(tab, connectionList, cloudConnectionsStore) {
+    if (tab.tabComponent == 'ConnectionTab') return _t('common.connections', { defaultMessage: 'Connections' });
+    if (tab.tabComponent?.startsWith('Admin')) return _t('tab.administration', { defaultMessage: 'Administration' });
     if (tab.props && tab.props.conid && tab.props.database) return tab.props.database;
     if (tab.props && tab.props.conid) {
-      const connection = connectionList?.find(x => x._id == tab.props.conid);
+      const connection =
+        connectionList?.find(x => x._id == tab.props.conid) ?? cloudConnectionsStore?.[tab.props.conid];
       if (connection) return getConnectionLabel(connection, { allowExplicitDatabase: false });
       return '???';
     }
@@ -196,9 +199,10 @@
     return '(no DB)';
   }
 
-  function getTabDbServer(tab, connectionList) {
+  function getTabDbServer(tab, connectionList, cloudConnectionsStore) {
     if (tab.props && tab.props.conid && tab.props.database) {
-      const connection = connectionList?.find(x => x._id == tab.props.conid);
+      const connection =
+        connectionList?.find(x => x._id == tab.props.conid) ?? cloudConnectionsStore?.[tab.props.conid];
       if (connection) return getConnectionLabel(connection, { allowExplicitDatabase: false });
       return null;
     }
@@ -232,7 +236,7 @@
   registerCommand({
     id: 'tabs.nextTab',
     category: 'Tabs',
-    name: 'Next tab',
+    name: _t('command.tabs.nextTab', { defaultMessage: 'Next tab' }),
     keyText: 'Ctrl+Tab',
     testEnabled: () => getOpenedTabs().filter(x => !x.closedTime).length >= 2,
     onClick: () => switchTabByOrder(false),
@@ -241,7 +245,7 @@
   registerCommand({
     id: 'tabs.previousTab',
     category: 'Tabs',
-    name: 'Previous tab',
+    name: _t('command.tabs.previousTab', { defaultMessage: 'Previous tab' }),
     keyText: 'Ctrl+Shift+Tab',
     testEnabled: () => getOpenedTabs().filter(x => !x.closedTime).length >= 2,
     onClick: () => switchTabByOrder(true),
@@ -250,7 +254,7 @@
   registerCommand({
     id: 'tabs.closeAll',
     category: 'Tabs',
-    name: 'Close all tabs',
+    name: _t('command.tabs.closeAll', { defaultMessage: 'Close all tabs' }),
     testEnabled: () => getOpenedTabs().filter(x => !x.closedTime).length >= 1,
     onClick: closeAll,
   });
@@ -258,8 +262,8 @@
   registerCommand({
     id: 'tabs.closeTab',
     category: 'Tabs',
-    name: 'Close tab',
-    keyText: isElectronAvailable() ? 'CtrlOrCommand+W' : 'CtrlOrCommand+Shift+W',
+    name: _t('command.tabs.closeTab', { defaultMessage: 'Close tab' }),
+    keyText: isElectronAvailable() ? 'CtrlOrCommand+W' : 'Alt+W',
     testEnabled: () => {
       const hasAnyOtherTab = getOpenedTabs().filter(x => !x.closedTime).length >= 1;
       const hasAnyModalOpen = getOpenedModals().length > 0;
@@ -272,7 +276,7 @@
   registerCommand({
     id: 'tabs.closeTabsWithCurrentDb',
     category: 'Tabs',
-    name: 'Close tabs with current DB',
+    name: _t('command.tabs.closeTabsWithCurrentDb', { defaultMessage: 'Close tabs with current DB' }),
     testEnabled: () => getOpenedTabs().filter(x => !x.closedTime).length >= 1 && !!getCurrentDatabase(),
     onClick: closeTabsWithCurrentDb,
   });
@@ -280,7 +284,7 @@
   registerCommand({
     id: 'tabs.closeTabsButCurrentDb',
     category: 'Tabs',
-    name: 'Close tabs but current DB',
+    name: _t('command.tabs.closeTabsButCurrentDb', { defaultMessage: 'Close tabs but current DB' }),
     testEnabled: () => getOpenedTabs().filter(x => !x.closedTime).length >= 1 && !!getCurrentDatabase(),
     onClick: closeTabsButCurrentDb,
   });
@@ -288,7 +292,7 @@
   registerCommand({
     id: 'tabs.reopenClosedTab',
     category: 'Tabs',
-    name: 'Reopen closed tab',
+    name: _t('command.tabs.reopenClosedTab', { defaultMessage: 'Reopen closed tab' }),
     keyText: 'CtrlOrCommand+Shift+T',
     testEnabled: () => getOpenedTabs().filter(x => x.closedTime).length >= 1,
     onClick: reopenClosedTab,
@@ -297,7 +301,7 @@
   registerCommand({
     id: 'tabs.addToFavorites',
     category: 'Tabs',
-    name: 'Add current tab to favorites',
+    name: _t('command.tabs.addToFavorites', { defaultMessage: 'Add current tab to favorites' }),
     // icon: 'icon favorite',
     // toolbar: true,
     testEnabled: () =>
@@ -334,6 +338,7 @@
     draggingTab,
     draggingTabTarget,
     getOpenedModals,
+    cloudConnectionsStore,
   } from '../stores';
   import tabs from '../tabs';
   import { setSelectedTab, switchCurrentDatabase } from '../utility/common';
@@ -348,6 +353,7 @@
   import { getConnectionLabel } from 'dbgate-tools';
   import { handleAfterTabClick } from '../utility/changeCurrentDbByTab';
   import { getBoolSettingsValue } from '../settings/settingsTools';
+  import NewObjectModal from '../modals/NewObjectModal.svelte';
 
   export let multiTabIndex;
   export let shownTab;
@@ -365,9 +371,9 @@
 
   $: tabsWithDb = $openedTabs.filter(showTabFilterFunc).map(tab => ({
     ...tab,
-    tabDbName: getTabDbName(tab, $connectionList),
+    tabDbName: getTabDbName(tab, $connectionList, $cloudConnectionsStore),
     tabDbKey: getTabDbKey(tab),
-    tabDbServer: getTabDbServer(tab, $connectionList),
+    tabDbServer: getTabDbServer(tab, $connectionList, $cloudConnectionsStore),
   }));
 
   $: groupedTabs = groupTabs(tabsWithDb);
@@ -711,9 +717,9 @@
     {/if}
     <div
       class="icon-button"
-      on:click={() => newQuery({ multiTabIndex })}
+      on:click={() => showModal(NewObjectModal, { multiTabIndex })}
       title="New query"
-      data-testid="TabsPanel_buttonNewQuery"
+      data-testid="TabsPanel_buttonNewObject"
     >
       <FontIcon icon="icon add" />
     </div>

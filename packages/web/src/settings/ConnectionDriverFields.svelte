@@ -17,6 +17,8 @@
   import FontIcon from '../icons/FontIcon.svelte';
   import FormDropDownTextField from '../forms/FormDropDownTextField.svelte';
   import { getConnectionLabel } from 'dbgate-tools';
+  import { _t } from '../translations';
+  import FormFileInputField from '../forms/FormFileInputField.svelte';
 
   export let getDatabaseList;
   export let currentConnection;
@@ -103,8 +105,25 @@
   ]}
 />
 
+{#if $authTypes && driver?.showConnectionField('authType', $values, showConnectionFieldArgs) && driver?.authTypeFirst}
+  {#key $authTypes}
+    <FormSelectField
+      label={driver?.authTypeLabel ?? 'Authentication'}
+      data-testid="ConnectionDriverFields_authType"
+      name="authType"
+      isNative
+      disabled={isConnected}
+      defaultValue={driver?.defaultAuthTypeName}
+      options={$authTypes.map(auth => ({
+        value: auth.name,
+        label: auth.title,
+      }))}
+    />
+  {/key}
+{/if}
+
 {#if driver?.showConnectionField('databaseFile', $values, showConnectionFieldArgs)}
-  {#if electron}
+  {#if electron && !driver?.dialect?.useServerDatabaseFile}
     <FormElectronFileSelector
       label="Database file"
       name="databaseFile"
@@ -153,7 +172,16 @@
   />
 {/if}
 
-{#if $authTypes && driver?.showConnectionField('authType', $values, showConnectionFieldArgs)}
+{#if driver?.showConnectionField('authToken', $values, showConnectionFieldArgs)}
+  <FormTextField
+    label={_t('authToken', { defaultMessage: 'Auth token' })}
+    name="authToken"
+    data-testid="ConnectionDriverFields_authToken"
+    disabled={isConnected || disabledFields.includes('authToken')}
+  />
+{/if}
+
+{#if $authTypes && driver?.showConnectionField('authType', $values, showConnectionFieldArgs) && !driver?.authTypeFirst}
   {#key $authTypes}
     <FormSelectField
       label={driver?.authTypeLabel ?? 'Authentication'}
@@ -433,6 +461,10 @@
     disabled={isConnected}
     data-testid="ConnectionDriverFields_useSeparateSchemas"
   />
+{/if}
+
+{#if driver?.showConnectionField('connectionDefinition', $values, showConnectionFieldArgs)}
+  <FormFileInputField disabled={isConnected} label="Service account key JSON" name="connectionDefinition" />
 {/if}
 
 {#if driver}

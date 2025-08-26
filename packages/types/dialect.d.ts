@@ -8,6 +8,7 @@ export interface SqlDialect {
   topRecords?: boolean;
   stringEscapeChar: string;
   offsetFetchRangeSyntax?: boolean;
+  offsetFirstSkipSyntax?: boolean;
   offsetNotSupported?: boolean;
   quoteIdentifier(s: string): string;
   fallbackDataType?: string;
@@ -17,8 +18,10 @@ export interface SqlDialect {
   defaultSchemaName?: string;
   enableConstraintsPerTable?: boolean;
   enableAllForeignKeys?: boolean;
+  enableForeignKeyChecks?: boolean;
   requireStandaloneSelectForScopeIdentity?: boolean;
   allowMultipleValuesInsert?: boolean;
+  useServerDatabaseFile?: boolean;
 
   dropColumnDependencies?: string[];
   changeColumnDependencies?: string[];
@@ -46,6 +49,7 @@ export interface SqlDialect {
   namedDefaultConstraint?: boolean;
 
   specificNullabilityImplementation?: boolean;
+  implicitNullDeclaration?: boolean;
   omitForeignKeys?: boolean;
   omitUniqueConstraints?: boolean;
   omitIndexes?: boolean;
@@ -65,9 +69,18 @@ export interface SqlDialect {
   requireFromDual?: boolean;
   userDatabaseNamePrefix?: string; // c## in Oracle
   upperCaseAllDbObjectNames?: boolean;
+  dbFileExtension?: string;
   defaultValueBeforeNullability?: boolean;
 
   predefinedDataTypes: string[];
+
+  columnProperties?: {
+    columnName?: boolean;
+    isSparse?: true;
+    isPersisted?: true;
+  };
+
+  safeCommentChanges?: boolean;
 
   // create sql-tree expression
   createColumnViewExpression(

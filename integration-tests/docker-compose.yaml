@@ -8,14 +8,25 @@ services:
   #   ports:
   #     - 15000:5432
   #
-  # mariadb:
-  #   image: mariadb
-  #   command: --default-authentication-plugin=mysql_native_password
-  #   restart: always
-  #   ports:
-  #     - 15004:3306
-  #   environment:
-  #     - MYSQL_ROOT_PASSWORD=Pwd2020Db
+  mariadb:
+    image: mariadb
+    command: --default-authentication-plugin=mysql_native_password
+    restart: always
+    ports:
+      - 15004:3306
+    environment:
+      - MYSQL_ROOT_PASSWORD=Pwd2020Db
+
+  db2:
+    image: icr.io/db2_community/db2:11.5.8.0
+    privileged: true
+    ports:
+      - "15055:50000"
+    environment:
+      LICENSE: accept
+      DB2INST1_PASSWORD: Pwd2020Db
+      DBNAME: testdb
+      DB2INSTANCE: db2inst1
 
   # mysql:
   #   image: mysql:8.0.18
@@ -25,13 +36,13 @@ services:
   #     - 15001:3306
   #   environment:
   #     - MYSQL_ROOT_PASSWORD=Pwd2020Db
+  
+
+  # cassandradb:
+  #   image: cassandra:5.0.2
+  #   ports:
+  #     - 15942:9042
   #
-
-  cassandradb:
-    image: cassandra:5.0.2
-    ports:
-      - 15942:9042
-
   # clickhouse:
   #   image: bitnami/clickhouse:24.8.4
   #   restart: always
@@ -55,28 +66,62 @@ services:
   #   ports:
   #     - 15003:26257
   #   command: start-single-node --insecure
-#   mongodb:
-#     image: mongo:4.0.12
-#     restart: always
-#     volumes:
-#       - mongo-data:/data/db
-#       - mongo-config:/data/configdb
-#     ports:
-#       - 27017:27017
+  #   mongodb:
+  #     image: mongo:4.0.12
+  #     restart: always
+  #     volumes:
+  #       - mongo-data:/data/db
+  #       - mongo-config:/data/configdb
+  #     ports:
+  #       - 27017:27017
 
-#   cockroachdb-init:
-#     image: cockroachdb/cockroach
-#     # build: cockroach
-#     # entrypoint: /cockroach/init.sh
-#     entrypoint: ./cockroach sql --insecure --host="cockroachdb" --execute="CREATE DATABASE IF NOT EXISTS test;"
+  #   cockroachdb-init:
+  #     image: cockroachdb/cockroach
+  #     # build: cockroach
+  #     # entrypoint: /cockroach/init.sh
+  #     entrypoint: ./cockroach sql --insecure --host="cockroachdb" --execute="CREATE DATABASE IF NOT EXISTS test;"
 
-#     depends_on:
-#       - cockroachdb
-#     restart: on-failure
+  #     depends_on:
+  #       - cockroachdb
+  #     restart: on-failure
 
-  oracle:
-    image: gvenzl/oracle-xe:21-slim
+  # oracle:
+  #   image: gvenzl/oracle-xe:21-slim
+  #   environment:
+  #     ORACLE_PASSWORD: Pwd2020Db
+  #   ports:
+  #     - 15006:1521
+
+  # libsql:
+  #   image: ghcr.io/tursodatabase/libsql-server:latest
+  #   platform: linux/amd64
+  #   ports:
+  #     - '8080:8080'
+  #     - '5002:5001'
+  #   volumes:
+  #     - ./data/libsql:/var/lib/sqld
+
+  firebird:
+    image: firebirdsql/firebird:latest
+    container_name: firebird-db
     environment:
-      ORACLE_PASSWORD: Pwd2020Db
+      - FIREBIRD_DATABASE=mydatabase.fdb
+      - FIREBIRD_USER=dbuser
+      - FIREBIRD_PASSWORD=dbpassword
+      - ISC_PASSWORD=masterkey
+      - FIREBIRD_TRACE=false
+      - FIREBIRD_USE_LEGACY_AUTH=true
     ports:
-      - 15006:1521
+      - '3050:3050'
+    volumes:
+      - firebird-data:/firebird/data
+      - ./firebird.conf:/firebird/firebird.conf # Mount custom config file
+    healthcheck:
+      test: ['CMD', 'nc', '-z', 'localhost', '3050']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  firebird-data:

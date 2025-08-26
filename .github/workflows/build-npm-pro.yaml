@@ -22,17 +22,17 @@ jobs:
       - uses: actions/checkout@v2
         with:
           fetch-depth: 1
-      - name: Use Node.js 18.x
+      - name: Use Node.js 22.x
         uses: actions/setup-node@v1
         with:
-          node-version: 18.x
+          node-version: 22.x
       - name: Checkout dbgate/dbgate-pro
         uses: actions/checkout@v2
         with:
           repository: dbgate/dbgate-pro
           token: ${{ secrets.GH_TOKEN }}
           path: dbgate-pro
-          ref: 21048330597124a88fa1b8447e0bc18666eb69c5
+          ref: 3438c79611bf9825cc6406c4fb7adf0c7063902d
       - name: Merge dbgate/dbgate-pro
         run: |
           mkdir ../dbgate-pro
@@ -97,4 +97,9 @@ jobs:
         run: |
           cd ..
           cd dbgate-merged/plugins/dbgate-plugin-cosmosdb
+          npm publish
+      - name: Publish dbgate-plugin-firestore
+        run: |
+          cd ..
+          cd dbgate-merged/plugins/dbgate-plugin-firestore
           npm publish

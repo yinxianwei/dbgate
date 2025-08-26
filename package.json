@@ -1,6 +1,6 @@
 {
   "private": true,
-  "version": "6.2.2-packer-beta.4",
+  "version": "6.6.2-beta.4",
   "name": "dbgate-all",
   "workspaces": [
     "packages/*",
@@ -9,6 +9,7 @@
   ],
   "scripts": {
     "start:api": "yarn workspace dbgate-api start | pino-pretty",
+    "start:api:watch": "nodemon --watch 'src/**' --ext 'ts,json,js' --exec yarn start:api",
     "start:api:json": "yarn workspace dbgate-api start",
     "start:app": "cd app && yarn start | pino-pretty",
     "start:app:singledb": "CONNECTIONS=con1 SERVER_con1=localhost ENGINE_con1=mysql@dbgate-plugin-mysql USER_con1=root PASSWORD_con1=Pwd2020Db SINGLE_CONNECTION=con1 SINGLE_DATABASE=Chinook yarn start:app",
@@ -42,7 +43,7 @@
     "build:plugins:frontend": "workspaces-run --only=\"dbgate-plugin-*\" -- yarn build:frontend",
     "build:plugins:backend": "workspaces-run --only=\"dbgate-plugin-*\" -- yarn build:backend",
     "build:plugins:frontend:watch": "workspaces-run --parallel --only=\"dbgate-plugin-*\" -- yarn build:frontend:watch",
-    "storage-json": "dbmodel model-to-json storage-db packages/api/src/storageModel.js --commonjs",
+    "storage-json": "node packages/dbmodel/bin/dbmodel.js model-to-json storage-db packages/api/src/storageModel.js --commonjs",
     "plugins:copydist": "workspaces-run --only=\"dbgate-plugin-*\" -- yarn copydist",
     "build:app:local": "yarn plugins:copydist && cd app && yarn build:local",
     "start:app:local": "cd app && yarn start:local",
@@ -67,7 +68,12 @@
     "postinstall": "yarn resetPackagedPlugins && yarn build:lib && patch-package && yarn build:plugins:frontend",
     "dbgate-serve": "node packages/dbgate/bin/dbgate-serve.js",
     "workflows": "node common/processWorkflows.js",
-    "cy:open": "cd e2e-tests && yarn cy:open"
+    "cy:open": "cd e2e-tests && yarn cy:open",
+    "translations:extract": "node common/translations-cli/index.js extract",
+    "translations:add-missing": "node common/translations-cli/index.js add-missing",
+    "translations:remove-unused": "node common/translations-cli/index.js remove-unused",
+    "translations:check": "node common/translations-cli/index.js check",
+    "errors": "node common/assign-dbgm-codes.mjs  ."
   },
   "dependencies": {
     "concurrently": "^5.1.0",

@@ -13,9 +13,9 @@ class Analyser extends DatabaseAnalyser {
   }
 
   async _runAnalysis() {
-    this.feedback({ analysingMessage: 'Loading tables' });
+    this.feedback({ analysingMessage: 'DBGM-00177 Loading tables' });
     const tables = await this.analyserQuery('tables', ['tables']);
-    this.feedback({ analysingMessage: 'Loading columns' });
+    this.feedback({ analysingMessage: 'DBGM-00178 Loading columns' });
     const columns = await this.analyserQuery('columns', ['tables']);
     // this.feedback({ analysingMessage: 'Loading views' });
     // const views = await this.analyserQuery('views', ['views']);
@@ -41,9 +41,9 @@ class Analyser extends DatabaseAnalyser {
     return res;
   }
 
-  async singleObjectAnalysis(dbhan, typeField) {
-    const structure = await this._runAnalysis(dbhan, typeField);
-    const item = structure[typeField]?.find((i) => i.pureName === dbhan.pureName);
+  async singleObjectAnalysis(name, typeField) {
+    const structure = await this._runAnalysis(name, typeField);
+    const item = structure[typeField]?.find((i) => i.pureName === name.pureName);
     return item;
   }
 

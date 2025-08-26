@@ -13,10 +13,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Use Node.js 18.x
+      - name: Use Node.js 22.x
         uses: actions/setup-node@v1
         with:
-          node-version: 18.x
+          node-version: 22.x
 
       - uses: actions/checkout@v3
         with:
@@ -62,6 +62,18 @@ jobs:
           name: screenshots
           path: screenshots
 
+      - name: Push E2E screenshots
+        if: ${{ github.ref_name == 'master' }}
+        run: |
+          git config --global user.email "info@dbgate.info"
+          git config --global user.name "GitHub Actions"
+          git clone https://${{ secrets.DIFLOW_GIT_SECRET }}@github.com/dbgate/dbgate-img.git
+          cp ../dbgate-merged/e2e-tests/screenshots/*.png dbgate-img/static/img
+          cd dbgate-img/static/img
+          git add .
+          git commit --amend --no-edit
+          git push --force
+
     services:
       postgres-cypress:
         image: postgres
@@ -98,7 +110,7 @@ jobs:
           - 16009:5556
 
       mongo:
-        image: mongo:4.0.12
+        image: mongo:4.4.29
         env:
           MONGO_INITDB_ROOT_USERNAME: root
           MONGO_INITDB_ROOT_PASSWORD: Pwd2020Db

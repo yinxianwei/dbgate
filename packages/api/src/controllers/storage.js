@@ -4,13 +4,13 @@ module.exports = {
     return null;
   },
 
+  async getExportedDatabase() {
+    return {};
+  },
+
   getConnection_meta: true,
   async getConnection({ conid }) {
     return null;
-  },
-
-  async loadSuperadminPermissions() {
-    return [];
   },
 
   getConnectionsForLoginPage_meta: true,
@@ -27,5 +27,14 @@ module.exports = {
     return {};
   },
 
+  sendAuditLog_meta: true,
+  async sendAuditLog({}) {
+    return null;
+  },
+
   startRefreshLicense() {},
+
+  async getUsedEngines() {
+    return null;
+  },
 };

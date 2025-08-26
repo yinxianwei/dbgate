@@ -9,6 +9,7 @@
   export let fullScreen = false;
   export let noPadding = false;
   export let simple = false;
+  export let simplefix = false;
   export let modalId;
 
   function handleCloseModal() {
@@ -39,7 +40,15 @@
 <!-- The Modal -->
 <div id="myModal" class="bglayer">
   <!-- Modal content -->
-  <div class="window" class:fullScreen class:simple use:clickOutside on:clickOutside={handleClickOutside}>
+  <div
+    class="window"
+    class:fullScreen
+    class:simple
+    class:simplefix
+    use:clickOutside
+    on:clickOutside={handleClickOutside}
+    data-testid="ModalBase_window"
+  >
     {#if $$slots.header}
       <div class="header" class:fullScreen>
         <div><slot name="header" /></div>
@@ -85,7 +94,7 @@
     flex-direction: column;
   }
 
-  .window:not(.fullScreen):not(.simple) {
+  .window:not(.fullScreen):not(.simple):not(.simplefix) {
     border-radius: 10px;
     margin: auto;
     margin-top: 15vh;
@@ -105,6 +114,12 @@
     margin: auto;
     margin-top: 25vh;
     width: 30%;
+  }
+
+  .window.simplefix {
+    margin: auto;
+    max-width: 750px;
+    margin-top: 10vh;
   }
 
   .close {

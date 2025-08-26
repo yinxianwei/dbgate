@@ -5,20 +5,22 @@ import type {
   ViewInfo,
   CollectionInfo,
   NamedObjectInfo,
+  EngineDriver,
 } from 'dbgate-types';
 import _flatten from 'lodash/flatten';
 import _uniq from 'lodash/uniq';
 import _keys from 'lodash/keys';
+import _compact from 'lodash/compact';
 
 export function addTableDependencies(db: DatabaseInfo): DatabaseInfo {
   if (!db.tables) {
     return db;
   }
 
-  const allForeignKeys = _flatten(db.tables.map(x => x.foreignKeys || []));
+  const allForeignKeys = _flatten(db.tables.map(x => x?.foreignKeys || []));
   return {
     ...db,
-    tables: db.tables.map(table => ({
+    tables: _compact(db.tables).map(table => ({
       ...table,
       dependencies: allForeignKeys.filter(x => x.refSchemaName == table.schemaName && x.refTableName == table.pureName),
     })),
@@ -302,4 +304,12 @@ export function skipDbGateInternalObjects(db: DatabaseInfo) {
     ...db,
     tables: (db.tables || []).filter(tbl => tbl.pureName != 'dbgate_deploy_journal'),
   };
+}
+
+export function adaptDatabaseInfo(db: DatabaseInfo, driver: EngineDriver): DatabaseInfo {
+  const modelAdapted = {
+    ...db,
+    tables: db.tables.map(table => driver.adaptTableInfo(table)),
+  };
+  return modelAdapted;
 }

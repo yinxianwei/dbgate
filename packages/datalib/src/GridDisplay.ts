@@ -28,6 +28,7 @@ export interface DisplayColumn {
   notNull?: boolean;
   autoIncrement?: boolean;
   isPrimaryKey?: boolean;
+  hasAutoValue?: boolean;
 
   // NoSQL specific
   isPartitionKey?: boolean;
@@ -71,7 +72,8 @@ export abstract class GridDisplay {
     protected setCache: ChangeCacheFunc,
     public driver?: EngineDriver,
     public dbinfo: DatabaseInfo = null,
-    public serverVersion = null
+    public serverVersion = null,
+    public currentSettings = null
   ) {
     this.dialect = (driver?.dialectByVersion && driver?.dialectByVersion(serverVersion)) || driver?.dialect;
   }
@@ -196,9 +198,24 @@ export abstract class GridDisplay {
     }));
   }
 
+  setSearchInColumns(searchInColumns: string) {
+    this.setConfig(cfg => ({
+      ...cfg,
+      searchInColumns,
+    }));
+  }
+
   get hiddenColumnIndexes() {
     // console.log('GridDisplay.hiddenColumn', this.config.hiddenColumns);
-    return (this.config.hiddenColumns || []).map(x => _.findIndex(this.allColumns, y => y.uniqueName == x));
+    const res = (this.config.hiddenColumns || []).map(x => _.findIndex(this.allColumns, y => y.uniqueName == x));
+    if (this.config.searchInColumns && !this.currentSettings?.['dataGrid.showAllColumnsWhenSearch']) {
+      for (let i = 0; i < this.allColumns.length; i++) {
+        if (!filterName(this.config.searchInColumns, this.allColumns[i].columnName)) {
+          res.push(i);
+        }
+      }
+    }
+    return _.sortBy(_.uniq(res));
   }
 
   isColumnChecked(column: DisplayColumn) {

@@ -2,10 +2,10 @@
   import JSONNode from './JSONNode.svelte';
   import { setContext } from 'svelte';
   import contextMenu, { getContextMenu } from '../utility/contextMenu';
-  import openNewTab from '../utility/openNewTab';
   import _ from 'lodash';
   import { copyTextToClipboard } from '../utility/clipboard';
   import { openJsonLinesData } from '../utility/openJsonLinesData';
+  import { useSettings } from '../utility/metadataLoaders';
 
   setContext('json-tree-context-key', {});
 
@@ -22,6 +22,10 @@
   export let isDeleted = false;
   export let isInserted = false;
   export let isModified = false;
+  export let hideKey = false;
+
+  const settings = useSettings();
+  $: wrap = $settings?.['behaviour.jsonPreviewWrap'];
 
   setContext('json-tree-default-expanded', expandAll);
   if (slicedKeyCount) setContext('json-tree-sliced-key-count', slicedKeyCount);
@@ -66,8 +70,10 @@
   class:isDeleted
   class:isInserted
   class:isModified
+  class:wrap
 >
   <JSONNode
+    {hideKey}
     {key}
     {value}
     isParentExpanded={true}
@@ -114,6 +120,9 @@
     display: var(--li-display, list-item);
     list-style: none;
     white-space: nowrap;
+  }
+  ul.wrap :global(li) {
+    white-space: normal;
   }
   ul,
   ul :global(ul) {

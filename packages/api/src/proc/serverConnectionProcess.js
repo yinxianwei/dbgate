@@ -39,14 +39,20 @@ async function handleRefresh() {
       name: 'error',
       message: err.message,
     });
-    logger.error(extractErrorLogData(err), 'Error refreshing server databases');
+    logger.error(extractErrorLogData(err), 'DBGM-00152 Error refreshing server databases');
     setTimeout(() => process.exit(1), 1000);
   }
 }
 
 async function readVersion() {
   const driver = requireEngineDriver(storedConnection);
-  const version = await driver.getVersion(dbhan);
+  let version;
+  try {
+    version = await driver.getVersion(dbhan);
+  } catch (err) {
+    logger.error(extractErrorLogData(err), 'DBGM-00153 Error getting DB server version');
+    version = { version: 'Unknown' };
+  }
   process.send({ msgtype: 'version', version });
 }
 
@@ -84,7 +90,7 @@ async function handleConnect(connection) {
       name: 'error',
       message: err.message,
     });
-    logger.error(extractErrorLogData(err), 'Error connecting to server');
+    logger.error(extractErrorLogData(err), 'DBGM-00154 Error connecting to server');
     setTimeout(() => process.exit(1), 1000);
   }
 
@@ -114,7 +120,7 @@ async function handleDatabaseOp(op, { msgid, name }) {
     } else {
       const dmp = driver.createDumper();
       dmp[op](name);
-      logger.info({ sql: dmp.s }, 'Running script');
+      logger.info({ sql: dmp.s }, 'DBGM-00043 Running script');
       await driver.query(dbhan, dmp.s, { discardResult: true });
     }
     await handleRefresh();
@@ -140,6 +146,30 @@ async function handleServerSummary({ msgid }) {
   return handleDriverDataCore(msgid, driver => driver.serverSummary(dbhan));
 }
 
+async function handleKillDatabaseProcess({ msgid, pid }) {
+  await waitConnected();
+  const driver = requireEngineDriver(storedConnection);
+
+  try {
+    const result = await driver.killProcess(dbhan, Number(pid));
+    process.send({ msgtype: 'response', msgid, result });
+  } catch (err) {
+    process.send({ msgtype: 'response', msgid, errorMessage: err.message });
+  }
+}
+
+async function handleListDatabaseProcesses({ msgid }) {
+  await waitConnected();
+  const driver = requireEngineDriver(storedConnection);
+
+  try {
+    const result = await driver.listProcesses(dbhan);
+    process.send({ msgtype: 'response', msgid, result });
+  } catch (err) {
+    process.send({ msgtype: 'response', msgid, errorMessage: err.message });
+  }
+}
+
 async function handleSummaryCommand({ msgid, command, row }) {
   return handleDriverDataCore(msgid, driver => driver.summaryCommand(dbhan, command, row));
 }
@@ -148,6 +178,8 @@ const messageHandlers = {
   connect: handleConnect,
   ping: handlePing,
   serverSummary: handleServerSummary,
+  killDatabaseProcess: handleKillDatabaseProcess,
+  listDatabaseProcesses: handleListDatabaseProcesses,
   summaryCommand: handleSummaryCommand,
   createDatabase: props => handleDatabaseOp('createDatabase', props),
   dropDatabase: props => handleDatabaseOp('dropDatabase', props),
@@ -164,7 +196,7 @@ function start() {
   setInterval(async () => {
     const time = new Date().getTime();
     if (time - lastPing > 40 * 1000) {
-      logger.info('Server connection not alive, exiting');
+      logger.info('DBGM-00044 Server connection not alive, exiting');
       const driver = requireEngineDriver(storedConnection);
       if (dbhan) {
         await driver.close(dbhan);
@@ -182,7 +214,7 @@ function start() {
         name: 'error',
         message: err.message,
       });
-      logger.error(extractErrorLogData(err), `Error processing message ${message?.['msgtype']}`);
+      logger.error(extractErrorLogData(err), `DBGM-00155 Error processing message ${message?.['msgtype']}`);
     }
   });
 }

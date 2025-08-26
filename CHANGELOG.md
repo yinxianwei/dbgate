@@ -8,6 +8,140 @@ Builds:
  - linux - application for linux
  - win - application for Windows
 
+## 6.6.1
+- ADDED: Support for Mongo shell (Premium) - #1114
+- FIXED: Support for BLOB in Oracle #1181
+- ADDED: Connect to named SQL Server instance #340
+- ADDED: Support for SQL Server descriptions #1137
+- ADDED: Application log viewer
+- FIXED: Selecting default database in connection dialog
+- CHANGED: Improved logging system, added related database and connection to logs metadata
+
+## 6.6.0
+- ADDED: Database chat - AI powered chatbot, which knows your database (Premium)
+- ADDED: Firestore support (Premium)
+- REMOVED: Query AI assistant (replaced by Database Chat)  (Premium)
+- FIXED: Chart permissions were ignored  (Premium)
+
+## 6.5.6
+- ADDED: New object window - quick access to most common functions
+- ADDED: Possibility to disable split query by empty line #1162
+- ADDED: Possibility to opt out authentication #1152
+- FIXED: Separate schema mode now works in Team Premium edition
+- FIXED: Handled situation, when user enters expired license, which is already prolonged
+- FIXED: Fixed some minor problems of charts
+
+## 6.5.5
+- ADDED: Administer cloud folder window
+- CHANGED: Cloud menu redesign
+- ADDED: Audit log (for Team Premium edition)
+- ADDED: Added new timeline chart type (line chart with time axis)
+- ADDED: Chart grouping (more measure determined from data)
+- CHANGED: Improved chart autodetection - string X axis (with bar type), COUNT as measure, split different measures
+- ADDED: Added chart data type detection
+- FIXED: Fixed chart displaying problems
+- FIXED: Fixed exporting chart to HTML
+- CHANGED: Choose COUNT measure without selecting underlying ID field (use virtual __count)
+- FIXED: Problems with authentification administration, especially for Postgres storage
+- CHANGED: Anonymous autentification (in Team Premium) is now by default disabled 
+
+## 6.5.3
+- CHANGED: Improved DbGate Cloud sign-in workflow
+- FIXED: Some fixes and error handling in new charts engine
+- ADDED: Charts - ability to choose aggregate function
+- CHANGED: Improved About window
+
+## 6.5.2
+- CHANGED: Autodetecting charts is disabled by default #1145
+- CHANGED: Improved chart displaying workflow
+- ADDED: Ability to close chart
+
+## 6.5.1
+- FIXED: DbGate Cloud e-mail sign-in method for desktop clients
+
+## 6.5.0
+- ADDED: DbGate cloud - online storage for connections, SQL scripts and other objects
+- ADDED: Public knowledge base - common SQL scripts for specific DB engines (table sizes, index stats etc.)
+- ADDED: Query results could be visualised in charts (Premium)
+- REMOVED: Chart from selection, active charts - replaced by query result charts
+- ADDED: FirebirdSQL support
+- ADDED: SQL front matter - properties of SQL script
+- ADDED: Auto-execute SQL script on open (saved in SQL front matter)
+- CHANGED: Smaller widget icon panel
+- CHANGED: Applications and Single-connection mode removed from widget icon panel
+- CHANGED: Temporarily disabled MongoDB profiler support
+- FIXED: Pie chart distorted if settings change #838
+- FIXED: SQL server generated insert statement should exclude computed and timestamp columns #1111
+- ADDED: Added option "Show all columns when searching" #1118
+- ADDED: Copy cells/rows (e.g. column names) from Structure view #1119
+- ADDED: Setting "Show table aliases in code completion" #1122
+- FIXED: Vulnerability - check file paths in web version
+- FIXED: Very slow render of tables with very log cells
+
+## 6.4.2
+
+- ADDED: Source label to docker container #1105 
+- FIXED: DbGate restart needed to take effect after trigger is created/deleted on mariadb #1112
+- ADDED: View PostgreSQL query console output #1108
+- FIXED: Single quote generete MySql error #1107
+- ADDED: Ability to limit query result count #1098
+- CHANGED: Correct processing of bigint columns #1087 #1055 #583
+- CHANGED: Improved and optimalized algorithm of loading redis keys #1062, #1034
+- FIXED: Fixed loading Redis keys with :: in key name
+
+## 6.4.0
+- ADDED: DuckDB support
+- ADDED: Data deployer (Premium)
+- ADDED: Compare data between JSON lines file in archive and database table
+- CHANGED: Data Duplicator => Data Replicator (suitable for update, create and delete data, much more customizable)
+- REMOVED: Data duplicator GUI (replaced with Data Deployer)
+- ADDED: Exporting to ZIP file
+- ADDED: Download SQL and SQLite files
+- ADDED: Upload SQLite files
+- ADDED: Upload archive as ZIP folder (Premium)
+- ADDED: Compress, uncompress archive folder (Premium)
+- ADDED: Export connections and settings #357
+- ADDED: Filtering by MongoDB ObjectId works now also without ObjectId(...) wrapper
+- ADDED: Split queries using blank lines #1089
+- FIXED: JSON-to-Grid only works if there is no newline #1085
+- CHANGED: When running multiple commands in script, stop execution after first error #1070
+- FIXED: Selection rectangle remains visible after closing JSONB edit cell value form #1031
+- FIXED: Diplaying numeric FK column with right alignement #1021
+- ADDED: Additional arguments for MySQL and PostgreSQL backup #1092
+- CHANGED: Amazon and Azure instalations are not auto-upgraded by default
+
+## 6.3.3
+- CHANGED: New administration UI, redesigned administration of users, connections and roles
+- ADDED: Encrypting passwords in team-premium edition
+- ADDED: Show scale bar on map #1090
+- FIXED: Fixed native backup/restore for MySQL+PostgreSQL over SSH tunnel #1092
+- CHANGED: Column mapping dialog - fixes and improvements for copying from one existing table into another
+- ADDED: Search in columns in table editor
+- ADDED: Line Wrap for JSON viewer #768
+
+### 6.3.2
+- ADDED: "Use system theme" switch, use changed system theme without restart #1084
+- ADDED: "Skip SETNAME instruction" option for Redis #1077
+- FIXED: Clickhouse views are now available even for user with limited permissions #1076
+- ADDED: Multiple-token search delimited with comma (=OR) in structure search boxes
+- CHANGED: When filtering columns in data browser, data view shows only filtered columns
+- ADDED: Advanced settings for diagrams (Premium)
+- ADDED: Diagrams - zoom with Ctrl+mouse wheel
+- FIXED: Scrollable diagram exports + scroll by mouse drag
+- FIXED: Fixed many problems in diagrams when zoom is applied
+- FIXED: Correctly end connection process after succesful/unsuccesful connect
+
+### 6.3.0
+- ADDED: Support for libSQL and Turso (Premium)
+- ADDED: Native backup and restore database for MySQL and PostgreSQL (Premium)
+- REMOVED: DbGate internal dump export for MySQL (replaced with call of mysqldump)
+- REMOVED: Import SQL dump with internal DbGate capabilities (replaced by calling of mysql and psql utilities)
+- FIXED: Many fixes in stream processing (imoprt/export), especialy for MongoDB
+- ADDED: Indicating progress of import/export tasks, better error reporting
+- CHANGED: #1060 - Changed shortcut for AI assistant
+- ADDED: /health endpoint with diagnostic info
+- FIXED: Linux Appimage crash => A JavaScript error occurred in the main process #1065 , #1067
+
 ### 6.2.1
 - ADDED: Commit/rollback and autocommit in scripts #1039
 - FIXED: Doesn't import all the records from MongoDB #1044
@@ -18,7 +152,7 @@ Builds:
 - FIXED: Scroll in XML cell view, XML view respect themes
 - REMOVED: armv7l build for Linux (because of problems with glibc compatibility)
 - CHANGED: Upgraded to node:22 for docker builds
-- CHANGED: Upgraded SQLite engine version (better-sqlite3@11.8.1)
+- CHANGED: Upgraded SQLite engine version
 
 ### 6.2.0
 - ADDED: Query AI Assistant (Premium)

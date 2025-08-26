@@ -2,14 +2,20 @@ import P from 'parsimmon';
 import moment from 'moment';
 import { Condition } from 'dbgate-sqltree';
 import { interpretEscapes, token, word, whitespace } from './common';
-import { hexStringToArray } from 'dbgate-tools';
+import { hexStringToArray, parseNumberSafe } from 'dbgate-tools';
 import { FilterBehaviour, TransformType } from 'dbgate-types';
 
 const binaryCondition =
-  (operator, numberDualTesting = false) =>
+  (operator, filterBehaviour: FilterBehaviour = {}) =>
   value => {
-    const numValue = parseFloat(value);
-    if (numberDualTesting && !isNaN(numValue)) {
+    const { passNumbers, allowNumberDualTesting } = filterBehaviour;
+    const numValue = parseNumberSafe(value);
+
+    if (
+      allowNumberDualTesting &&
+      // @ts-ignore
+      !isNaN(numValue)
+    ) {
       return {
         conditionType: 'or',
         conditions: [
@@ -39,6 +45,21 @@ const binaryCondition =
       };
     }
 
+    // @ts-ignore
+    if (passNumbers && !isNaN(numValue)) {
+      return {
+        conditionType: 'binary',
+        operator,
+        left: {
+          exprType: 'placeholder',
+        },
+        right: {
+          exprType: 'value',
+          value: numValue,
+        },
+      };
+    }
+
     return {
       conditionType: 'binary',
       operator,
@@ -51,6 +72,18 @@ const binaryCondition =
       },
     };
   };
+
+const simpleEqualCondition = () => value => ({
+  conditionType: 'binary',
+  operator: '=',
+  left: {
+    exprType: 'placeholder',
+  },
+  right: {
+    exprType: 'value',
+    value,
+  },
+});
 
 const likeCondition = (conditionType, likeString) => value => ({
   conditionType,
@@ -333,20 +366,22 @@ const createParser = (filterBehaviour: FilterBehaviour) => {
 
     string1Num: () =>
       token(P.regexp(/"-?(0|[1-9][0-9]*)([.][0-9]+)?([eE][+-]?[0-9]+)?"/, 1))
-        .map(Number)
+        .map(parseNumberSafe)
         .desc('numer quoted'),
 
     string2Num: () =>
       token(P.regexp(/'-?(0|[1-9][0-9]*)([.][0-9]+)?([eE][+-]?[0-9]+)?'/, 1))
-        .map(Number)
+        .map(parseNumberSafe)
         .desc('numer quoted'),
 
     number: () =>
       token(P.regexp(/-?(0|[1-9][0-9]*)([.][0-9]+)?([eE][+-]?[0-9]+)?/))
-        .map(Number)
+        .map(parseNumberSafe)
         .desc('number'),
 
     objectid: () => token(P.regexp(/ObjectId\(['"]?[0-9a-f]{24}['"]?\)/)).desc('ObjectId'),
+
+    objectidstr: () => token(P.regexp(/[0-9a-f]{24}/)).desc('ObjectId string'),
 
     hexstring: () =>
       token(P.regexp(/0x(([0-9a-fA-F][0-9a-fA-F])+)/, 1))
@@ -366,6 +401,7 @@ const createParser = (filterBehaviour: FilterBehaviour) => {
     value: r => P.alt(...allowedValues.map(x => r[x])),
     valueTestEq: r => r.value.map(binaryCondition('=')),
     hexTestEq: r => r.hexstring.map(binaryCondition('=')),
+    valueTestObjectIdStr: r => r.objectidstr.map(simpleEqualCondition()),
     valueTestStr: r => r.value.map(likeCondition('like', '%#VALUE#%')),
     valueTestNum: r => r.number.map(numberTestCondition()),
     valueTestObjectId: r => r.objectid.map(objectIdTestCondition()),
@@ -443,18 +479,18 @@ const createParser = (filterBehaviour: FilterBehaviour) => {
     null: () => word('NULL').map(unaryCondition('isNull')),
     isEmpty: r => r.empty.map(unaryCondition('isEmpty')),
     isNotEmpty: r => r.not.then(r.empty).map(unaryCondition('isNotEmpty')),
-    true: () => P.regexp(/true/i).map(binaryFixedValueCondition('1')),
-    false: () => P.regexp(/false/i).map(binaryFixedValueCondition('0')),
+    true: () => P.regexp(/true/i).map(binaryFixedValueCondition(filterBehaviour.passBooleans ? true : '1')),
+    false: () => P.regexp(/false/i).map(binaryFixedValueCondition(filterBehaviour.passBooleans ? false : '0')),
     trueNum: () => word('1').map(binaryFixedValueCondition('1')),
     falseNum: () => word('0').map(binaryFixedValueCondition('0')),
 
-    eq: r => word('=').then(r.value).map(binaryCondition('=', filterBehaviour.allowNumberDualTesting)),
-    ne: r => word('!=').then(r.value).map(binaryCondition('<>', filterBehaviour.allowNumberDualTesting)),
-    ne2: r => word('<>').then(r.value).map(binaryCondition('<>', filterBehaviour.allowNumberDualTesting)),
-    le: r => word('<=').then(r.value).map(binaryCondition('<=', filterBehaviour.allowNumberDualTesting)),
-    ge: r => word('>=').then(r.value).map(binaryCondition('>=', filterBehaviour.allowNumberDualTesting)),
-    lt: r => word('<').then(r.value).map(binaryCondition('<', filterBehaviour.allowNumberDualTesting)),
-    gt: r => word('>').then(r.value).map(binaryCondition('>', filterBehaviour.allowNumberDualTesting)),
+    eq: r => word('=').then(r.value).map(binaryCondition('=', filterBehaviour)),
+    ne: r => word('!=').then(r.value).map(binaryCondition('<>', filterBehaviour)),
+    ne2: r => word('<>').then(r.value).map(binaryCondition('<>', filterBehaviour)),
+    le: r => word('<=').then(r.value).map(binaryCondition('<=', filterBehaviour)),
+    ge: r => word('>=').then(r.value).map(binaryCondition('>=', filterBehaviour)),
+    lt: r => word('<').then(r.value).map(binaryCondition('<', filterBehaviour)),
+    gt: r => word('>').then(r.value).map(binaryCondition('>', filterBehaviour)),
     startsWith: r => word('^').then(r.value).map(likeCondition('like', '#VALUE#%')),
     endsWith: r => word('$').then(r.value).map(likeCondition('like', '%#VALUE#')),
     contains: r => word('+').then(r.value).map(likeCondition('like', '%#VALUE#%')),
@@ -507,8 +543,12 @@ const createParser = (filterBehaviour: FilterBehaviour) => {
     allowedElements.push('exists', 'notExists');
   }
 
-  if (filterBehaviour.supportArrayTesting) {
-    allowedElements.push('emptyArray', 'notEmptyArray');
+  if (filterBehaviour.supportEmptyArrayTesting) {
+    allowedElements.push('emptyArray');
+  }
+
+  if (filterBehaviour.supportNotEmptyArrayTesting) {
+    allowedElements.push('notEmptyArray');
   }
 
   if (filterBehaviour.supportNullTesting) {
@@ -546,12 +586,13 @@ const createParser = (filterBehaviour: FilterBehaviour) => {
     }
   }
 
-  if (filterBehaviour.allowNumberDualTesting) {
-    allowedElements.push('valueTestNum');
+  if (filterBehaviour.allowObjectIdTesting) {
+    allowedElements.push('valueTestObjectIdStr');
+    allowedElements.push('valueTestObjectId');
   }
 
-  if (filterBehaviour.allowObjectIdTesting) {
-    allowedElements.push('valueTestObjectId');
+  if (filterBehaviour.allowNumberDualTesting) {
+    allowedElements.push('valueTestNum');
   }
 
   // must be last

@@ -86,6 +86,7 @@
         condition: buildConditionForGrid(props),
         sort: buildSortForGrid(props),
       },
+      auditLogSessionGroup: 'data-grid',
     });
 
     if (response.errorMessage) return response;
@@ -121,7 +122,11 @@
   import _ from 'lodash';
   import { registerQuickExportHandler } from '../buttons/ToolStripExportButton.svelte';
   import registerCommand from '../commands/registerCommand';
-  import { extractShellConnection } from '../impexp/createImpExpScript';
+  import {
+    extractShellConnection,
+    extractShellConnectionHostable,
+    extractShellHostConnection,
+  } from '../impexp/createImpExpScript';
   import { apiCall } from '../utility/api';
 
   import { registerMenu } from '../utility/contextMenu';
@@ -235,10 +240,11 @@
       {
         functionName: 'queryReader',
         props: {
-          connection: extractShellConnection(coninfo, database),
+          ...extractShellConnectionHostable(coninfo, database),
           queryType: coninfo.isReadOnly ? 'json' : 'native',
           query: coninfo.isReadOnly ? getExportQueryJson() : getExportQuery(),
         },
+        hostConnection: extractShellHostConnection(coninfo, database),
       },
       fmt,
       display.getExportColumnMap()

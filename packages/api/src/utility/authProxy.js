@@ -36,6 +36,20 @@ async function callRefactorSqlQueryApi(query, task, structure, dialect) {
   return null;
 }
 
+function getLicenseHttpHeaders() {
+  return {};
+}
+
+async function tryToGetRefreshedLicense(oldLicenseKey) {
+  return {
+    status: 'error',
+  };
+}
+
+function getAiGatewayServer() {
+  return {};
+}
+
 module.exports = {
   isAuthProxySupported,
   authProxyGetRedirectUrl,
@@ -47,4 +61,7 @@ module.exports = {
   callTextToSqlApi,
   callCompleteOnCursorApi,
   callRefactorSqlQueryApi,
+  getLicenseHttpHeaders,
+  tryToGetRefreshedLicense,
+  getAiGatewayServer,
 };

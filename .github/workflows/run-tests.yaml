@@ -13,10 +13,10 @@ jobs:
   all-tests:
     runs-on: ubuntu-latest
     steps:
-      - name: Use Node.js 18.x
+      - name: Use Node.js 22.x
         uses: actions/setup-node@v1
         with:
-          node-version: 18.x
+          node-version: 22.x
       - uses: actions/checkout@v3
         with:
           fetch-depth: 1
@@ -36,6 +36,11 @@ jobs:
         if: always()
         run: |
           cd packages/datalib
+          yarn test:ci
+      - name: Tools tests
+        if: always()
+        run: |
+          cd packages/tools
           yarn test:ci
       - uses: tanmen/jest-reporter@v1
         if: always()
@@ -93,3 +98,18 @@ jobs:
         image: cassandra:5.0.2
         ports:
           - '15942:9042'
+      libsql:
+        image: ghcr.io/tursodatabase/libsql-server:latest
+        ports:
+          - '8080:8080'
+      firebird:
+        image: firebirdsql/firebird:latest
+        env:
+          FIREBIRD_DATABASE: mydatabase.fdb
+          FIREBIRD_USER: dbuser
+          FIREBIRD_PASSWORD: dbpassword
+          ISC_PASSWORD: masterkey
+          FIREBIRD_TRACE: false
+          FIREBIRD_USE_LEGACY_AUTH: true
+        ports:
+          - '3050:3050'

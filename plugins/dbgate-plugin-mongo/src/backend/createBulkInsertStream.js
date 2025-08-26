@@ -1,9 +1,8 @@
 const ObjectId = require('mongodb').ObjectId;
-const { getLogger } = global.DBGATE_PACKAGES['dbgate-tools'];
+const { getLogger, extractErrorLogData } = global.DBGATE_PACKAGES['dbgate-tools'];
 const { EJSON } = require('bson');
 
 const logger = getLogger('mongoBulkInsert');
-
 
 function createBulkInsertStream(driver, stream, dbhan, name, options) {
   const collectionName = name.pureName;
@@ -31,21 +30,31 @@ function createBulkInsertStream(driver, stream, dbhan, name, options) {
   };
 
   writable.checkStructure = async () => {
-    if (options.dropIfExists) {
-      logger.info(`Dropping collection ${collectionName}`);
-      await db.collection(collectionName).drop();
-    }
-    if (options.truncate) {
-      logger.info(`Truncating collection ${collectionName}`);
-      await db.collection(collectionName).deleteMany({});
+    try {
+      if (options.dropIfExists) {
+        logger.info(`DBGM-00137 Dropping collection ${collectionName}`);
+        await db.collection(collectionName).drop();
+      }
+      if (options.truncate) {
+        logger.info(`DBGM-00138 Truncating collection ${collectionName}`);
+        await db.collection(collectionName).deleteMany({});
+      }
+    } catch (err) {
+      logger.error(extractErrorLogData(err), 'DBGM-00139 Error during preparing mongo bulk insert collection, stopped');
+      writable.destroy(err);
     }
   };
 
   writable.send = async () => {
-    const rows = writable.buffer;
-    writable.buffer = [];
+    try {
+      const rows = writable.buffer;
+      writable.buffer = [];
 
-    await db.collection(collectionName).insertMany(rows);
+      await db.collection(collectionName).insertMany(rows);
+    } catch (err) {
+      logger.error(extractErrorLogData(err), 'DBGM-00197 Error bulk insert collection, stopped');
+      writable.destroy(err);
+    }
   };
 
   writable.sendIfFull = async () => {

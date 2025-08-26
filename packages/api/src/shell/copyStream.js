@@ -1,7 +1,7 @@
 const EnsureStreamHeaderStream = require('../utility/EnsureStreamHeaderStream');
 const ColumnMapTransformStream = require('../utility/ColumnMapTransformStream');
 const streamPipeline = require('../utility/streamPipeline');
-const { getLogger, extractErrorLogData, RowProgressReporter } = require('dbgate-tools');
+const { getLogger, extractErrorLogData, RowProgressReporter, extractErrorMessage } = require('dbgate-tools');
 const logger = getLogger('copyStream');
 const stream = require('stream');
 
@@ -11,7 +11,9 @@ class ReportingTransform extends stream.Transform {
     this.reporter = reporter;
   }
   _transform(chunk, encoding, callback) {
-    this.reporter.add(1);
+    if (!chunk?.__isStreamHeader) {
+      this.reporter.add(1);
+    }
     this.push(chunk);
     callback();
   }
@@ -66,7 +68,8 @@ async function copyStream(input, output, options) {
     process.send({
       msgtype: 'copyStreamError',
       copyStreamError: {
-        message: err.message,
+        message: extractErrorMessage(err),
+        progressName,
         ...err,
       },
     });
@@ -76,11 +79,11 @@ async function copyStream(input, output, options) {
         msgtype: 'progress',
         progressName,
         status: 'error',
-        errorMessage: err.message,
+        errorMessage: extractErrorMessage(err),
       });
     }
 
-    logger.error(extractErrorLogData(err, { progressName }), 'Import/export job failed');
+    logger.error(extractErrorLogData(err, { progressName }), 'DBGM-00157 Import/export job failed');
     // throw err;
   }
 }

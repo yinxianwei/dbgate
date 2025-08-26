@@ -13,10 +13,10 @@ jobs:
   e2e-tests:
     runs-on: ubuntu-latest
     steps:
-      - name: Use Node.js 18.x
+      - name: Use Node.js 22.x
         uses: actions/setup-node@v1
         with:
-          node-version: 18.x
+          node-version: 22.x
       - uses: actions/checkout@v3
         with:
           fetch-depth: 1
@@ -26,7 +26,7 @@ jobs:
           repository: dbgate/dbgate-pro
           token: ${{ secrets.GH_TOKEN }}
           path: dbgate-pro
-          ref: 21048330597124a88fa1b8447e0bc18666eb69c5
+          ref: 3438c79611bf9825cc6406c4fb7adf0c7063902d
       - name: Merge dbgate/dbgate-pro
         run: |
           mkdir ../dbgate-pro
@@ -69,6 +69,17 @@ jobs:
         with:
           name: screenshots
           path: screenshots
+      - name: Push E2E screenshots
+        if: ${{ github.ref_name == 'master' }}
+        run: |
+          git config --global user.email "info@dbgate.info"
+          git config --global user.name "GitHub Actions"
+          git clone https://${{ secrets.DIFLOW_GIT_SECRET }}@github.com/dbgate/dbgate-img.git
+          cp ../dbgate-merged/e2e-tests/screenshots/*.png dbgate-img/static/img
+          cd dbgate-img/static/img
+          git add .
+          git commit --amend --no-edit
+          git push --force
     services:
       postgres-cypress:
         image: postgres
@@ -96,7 +107,7 @@ jobs:
         ports:
           - '16009:5556'
       mongo:
-        image: mongo:4.0.12
+        image: mongo:4.4.29
         env:
           MONGO_INITDB_ROOT_USERNAME: root
           MONGO_INITDB_ROOT_PASSWORD: Pwd2020Db

@@ -9,6 +9,7 @@
   import {
     activeTabId,
     appUpdateStatus,
+    cloudSigninTokenHolder,
     currentArchive,
     currentDatabase,
     currentThemeDefinition,
@@ -16,7 +17,12 @@
     visibleCommandPalette,
   } from '../stores';
   import { getConnectionLabel } from 'dbgate-tools';
-  import { useConnectionList, useDatabaseServerVersion, useDatabaseStatus } from '../utility/metadataLoaders';
+  import {
+    useConfig,
+    useConnectionList,
+    useDatabaseServerVersion,
+    useDatabaseStatus,
+  } from '../utility/metadataLoaders';
   import { findCommand } from '../commands/runCommand';
   import { useConnectionColor } from '../utility/useConnectionColor';
   import { apiCall } from '../utility/api';
@@ -27,6 +33,7 @@
   $: dbid = connection ? { conid: connection._id, database: databaseName } : null;
   $: status = useDatabaseStatus(dbid || {});
   $: serverVersion = useDatabaseServerVersion(dbid || {});
+  $: config = useConfig();
 
   $: contextItems = $statusBarTabInfo[$activeTabId] as any[];
   $: connectionLabel = getConnectionLabel(connection, { allowExplicitDatabase: false });
@@ -148,7 +155,7 @@
         </div>
       </div>
     {/if}
-    {#if $currentArchive}
+    {#if $currentArchive && $currentArchive != 'default'}
       <div
         class="item flex clickable"
         title="Current archive"
@@ -170,6 +177,20 @@
         {item.text}
       </div>
     {/each}
+
+    {#if $config?.isUserLoggedIn && $config?.login}
+      <div class="item clickable" on:click={() => visibleCommandPalette.set(findCommand('app.loggedUserCommands'))}>
+        <FontIcon icon="icon users" padRight />
+        {$config?.login}
+      </div>
+    {/if}
+
+    {#if $cloudSigninTokenHolder?.email}
+      <div class="item">
+        <FontIcon icon="icon cloud" padRight />
+        {$cloudSigninTokenHolder?.email}
+      </div>
+    {/if}
 
     {#if $appUpdateStatus}
       <div class="item">

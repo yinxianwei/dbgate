@@ -31,6 +31,7 @@
   export let padLeft = false;
   export let padRight = false;
   export let style = null;
+  export let colorClass = null;
 
   const iconNames = {
     'icon minus-box': 'mdi mdi-minus-box-outline',
@@ -39,6 +40,9 @@
     'icon minus-thick': 'mdi mdi-minus-thick',
     'icon invisible-box': 'mdi mdi-minus-box-outline icon-invisible',
     'icon cloud-upload': 'mdi mdi-cloud-upload',
+    'icon cloud': 'mdi mdi-cloud',
+    'icon cloud-public': 'mdi mdi-cloud-search',
+    'icon cloud-private': 'mdi mdi-cloud-key',
     'icon import': 'mdi mdi-application-import',
     'icon export': 'mdi mdi-application-export',
     'icon new-connection': 'mdi mdi-database-plus',
@@ -68,6 +72,10 @@
     'icon trigger': 'mdi mdi-lightning-bolt',
     'icon scheduler-event': 'mdi mdi-calendar-blank',
     'icon arrow-link': 'mdi mdi-arrow-top-right-thick',
+    'icon reset': 'mdi mdi-cancel',
+    'icon send': 'mdi mdi-send',
+    'icon regex': 'mdi mdi-regex',
+    'icon list': 'mdi mdi-format-list-bulleted-triangle',
 
     'icon window-restore': 'mdi mdi-window-restore',
     'icon window-maximize': 'mdi mdi-window-maximize',
@@ -110,6 +118,10 @@
     'icon history': 'mdi mdi-history',
     'icon structure': 'mdi mdi-tools',
     'icon square': 'mdi mdi-square',
+    'icon data-deploy': 'mdi mdi-database-settings',
+
+    'icon cloud-account': 'mdi mdi-account-remove-outline',
+    'icon cloud-account-connected': 'mdi mdi-account-check-outline',
 
     'icon edit': 'mdi mdi-pencil',
     'icon delete': 'mdi mdi-delete',
@@ -135,6 +147,8 @@
     'icon markdown': 'mdi mdi-application',
     'icon preview': 'mdi mdi-file-find',
     'icon eye': 'mdi mdi-eye',
+    'icon perspective': 'mdi mdi-eye',
+    'icon auditlog': 'mdi mdi-eye',
     'icon check-all': 'mdi mdi-check-all',
     'icon checkbox-blank': 'mdi mdi-checkbox-blank-outline',
     'icon checkbox-marked': 'mdi mdi-checkbox-marked-outline',
@@ -150,8 +164,12 @@
     'icon text': 'mdi mdi-text',
     'icon ai': 'mdi mdi-head-lightbulb',
     'icon wait': 'mdi mdi-timer-sand',
+    'icon more': 'mdi mdi-more',
+    'icon copy': 'mdi mdi-content-copy',
+    'icon arrow-start-here': 'mdi mdi-arrow-down-bold-circle',
 
     'icon run': 'mdi mdi-play',
+    'icon run-settings': 'mdi mdi-cog-play',
     'icon chevron-down': 'mdi mdi-chevron-down',
     'icon chevron-left': 'mdi mdi-chevron-left',
     'icon chevron-right': 'mdi mdi-chevron-right',
@@ -206,6 +224,8 @@
     'icon type-objectid': 'mdi mdi-alpha-i-box',
     'icon type-null': 'mdi mdi-code-equal',
     'icon type-unknown': 'mdi mdi-help-box',
+    'icon equal': 'mdi mdi-equal',
+    'icon not-equal': 'mdi mdi-not-equal-variant',
 
     'icon at': 'mdi mdi-at',
     'icon expand-all': 'mdi mdi-expand-all',
@@ -216,6 +236,14 @@
     'icon rollback': 'mdi mdi-close-circle',
     'icon autocommit-on': 'mdi mdi-check-circle',
     'icon autocommit-off': 'mdi mdi-check-circle-outline',
+
+    'icon premium': 'mdi mdi-star',
+    'icon upload': 'mdi mdi-upload',
+    'icon limit': 'mdi mdi-car-speed-limiter',
+
+    'icon chart': 'mdi mdi-chart-bar',
+    'icon cloud-connection': 'mdi mdi-cloud-lock',
+    'icon diagram': 'mdi mdi-graph',
 
     'img ok': 'mdi mdi-check-circle color-icon-green',
     'img ok-inv': 'mdi mdi-check-circle color-icon-inv-green',
@@ -230,12 +258,14 @@
 
     'img archive': 'mdi mdi-table color-icon-gold',
     'img archive-folder': 'mdi mdi-database-outline color-icon-green',
+    'img zipfile': 'mdi mdi-zip-box color-icon-gold',
     'img autoincrement': 'mdi mdi-numeric-1-box-multiple-outline',
     'img column': 'mdi mdi-table-column',
     'img server': 'mdi mdi-server color-icon-blue',
     'img primary-key': 'mdi mdi-key-star color-icon-yellow',
     'img foreign-key': 'mdi mdi-key-link',
     'img sql-file': 'mdi mdi-file',
+    'img anyfile': 'mdi mdi-file-question color-icon-red',
     'img shell': 'mdi mdi-flash color-icon-blue',
     'img chart': 'mdi mdi-chart-bar color-icon-magenta',
     'img markdown': 'mdi mdi-application color-icon-red',
@@ -254,6 +284,9 @@
     'img role': 'mdi mdi-account-group color-icon-blue',
     'img admin': 'mdi mdi-security color-icon-blue',
     'img auth': 'mdi mdi-account-key color-icon-blue',
+    'img cloud-connection': 'mdi mdi-cloud-lock color-icon-blue',
+    'img ai': 'mdi mdi-head-lightbulb color-icon-yellow',
+    'img run': 'mdi mdi-play color-icon-blue',
 
     'img add': 'mdi mdi-plus-circle color-icon-green',
     'img minus': 'mdi mdi-minus-circle color-icon-red',
@@ -280,12 +313,14 @@
     'img sort-asc': 'mdi mdi-sort-alphabetical-ascending color-icon-green',
     'img sort-desc': 'mdi mdi-sort-alphabetical-descending color-icon-green',
     'img map': 'mdi mdi-map color-icon-blue',
+    'img applog': 'mdi mdi-desktop-classic color-icon-green',
 
     'img reference': 'mdi mdi-link-box',
     'img link': 'mdi mdi-link',
     'img filter': 'mdi mdi-filter',
     'img group': 'mdi mdi-group',
     'img perspective': 'mdi mdi-eye color-icon-yellow',
+    'img auditlog': 'mdi mdi-eye color-icon-blue',
     'img parent-filter': 'mdi mdi-home-alert color-icon-yellow',
 
     'img folder': 'mdi mdi-folder color-icon-yellow',
@@ -299,18 +334,24 @@
     'img type-rejson': 'mdi mdi-color-json color-icon-blue',
     'img keydb': 'mdi mdi-key color-icon-blue',
 
-    'img duplicator': 'mdi mdi-content-duplicate color-icon-green',
+    'img replicator': 'mdi mdi-content-duplicate color-icon-green',
     'img import': 'mdi mdi-database-import color-icon-green',
     'img export': 'mdi mdi-database-export color-icon-green',
     'img transform': 'mdi mdi-rotate-orbit color-icon-blue',
     'img tip': 'mdi mdi-lightbulb-on color-icon-yellow',
 
     'img filter-active': 'mdi mdi-filter-cog color-icon-blue',
+
+    'img db-backup': 'mdi mdi-database-export color-icon-yellow',
+    'img db-restore': 'mdi mdi-database-import color-icon-red',
+    'img settings': 'mdi mdi-cog color-icon-blue',
+    'img data-deploy': 'mdi mdi-database-settings color-icon-green',
+    'img arrow-start-here': 'mdi mdi-arrow-down-bold-circle color-icon-green',
   };
 </script>
 
 <span
-  class={iconNames[icon] || icon}
+  class={`${iconNames[icon] || icon} ${colorClass || ''}`}
   {title}
   class:padLeft
   class:padRight

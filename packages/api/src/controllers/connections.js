@@ -14,7 +14,7 @@ const JsonLinesDatabase = require('../utility/JsonLinesDatabase');
 const processArgs = require('../utility/processArgs');
 const { safeJsonParse, getLogger, extractErrorLogData } = require('dbgate-tools');
 const platformInfo = require('../utility/platformInfo');
-const { connectionHasPermission, testConnectionPermission } = require('../utility/hasPermission');
+const { connectionHasPermission, testConnectionPermission, loadPermissionsFromRequest } = require('../utility/hasPermission');
 const pipeForkLogs = require('../utility/pipeForkLogs');
 const requireEngineDriver = require('../utility/requireEngineDriver');
 const { getAuthProviderById } = require('../auth/authProvider');
@@ -37,6 +37,11 @@ function getNamedArgs() {
       if (name.endsWith('.db') || name.endsWith('.sqlite') || name.endsWith('.sqlite3')) {
         res.databaseFile = name;
         res.engine = 'sqlite@dbgate-plugin-sqlite';
+      }
+
+      if (name.endsWith('.duckdb')) {
+        res.databaseFile = name;
+        res.engine = 'duckdb@dbgate-plugin-duckdb';
       }
     }
   }
@@ -62,7 +67,10 @@ function getPortalCollections() {
       port: process.env[`PORT_${id}`],
       databaseUrl: process.env[`URL_${id}`],
       useDatabaseUrl: !!process.env[`URL_${id}`],
-      databaseFile: process.env[`FILE_${id}`],
+      databaseFile: process.env[`FILE_${id}`]?.replace(
+        '%%E2E_TEST_DATA_DIRECTORY%%',
+        path.join(path.dirname(path.dirname(__dirname)), 'e2e-tests', 'tmpdata')
+      ),
       socketPath: process.env[`SOCKET_PATH_${id}`],
       serviceName: process.env[`SERVICE_NAME_${id}`],
       authType: process.env[`AUTH_TYPE_${id}`] || (process.env[`SOCKET_PATH_${id}`] ? 'socket' : undefined),
@@ -99,12 +107,21 @@ function getPortalCollections() {
       trustServerCertificate: process.env[`SSL_TRUST_CERTIFICATE_${id}`],
     }));
 
-    logger.info({ connections: connections.map(pickSafeConnectionInfo) }, 'Using connections from ENV variables');
+    for (const conn of connections) {
+      for (const prop in process.env) {
+        if (prop.startsWith(`CONNECTION_${conn._id}_`)) {
+          const name = prop.substring(`CONNECTION_${conn._id}_`.length);
+          conn[name] = process.env[prop];
+        }
+      }
+    }
+
+    logger.info({ connections: connections.map(pickSafeConnectionInfo) }, 'DBGM-00005 Using connections from ENV variables');
     const noengine = connections.filter(x => !x.engine);
     if (noengine.length > 0) {
       logger.warn(
         { connections: noengine.map(x => x._id) },
-        'Invalid CONNECTIONS configutation, missing ENGINE for connection ID'
+        'DBGM-00006 Invalid CONNECTIONS configuration, missing ENGINE for connection ID'
       );
     }
     return connections;
@@ -210,6 +227,7 @@ module.exports = {
   list_meta: true,
   async list(_params, req) {
     const storage = require('./storage');
+    const loadedPermissions = await loadPermissionsFromRequest(req);
 
     const storageConnections = await storage.connections(req);
     if (storageConnections) {
@@ -217,9 +235,22 @@ module.exports = {
     }
     if (portalConnections) {
       if (platformInfo.allowShellConnection) return portalConnections;
-      return portalConnections.map(maskConnection).filter(x => connectionHasPermission(x, req));
+      return portalConnections.map(maskConnection).filter(x => connectionHasPermission(x, loadedPermissions));
     }
-    return (await this.datastore.find()).filter(x => connectionHasPermission(x, req));
+    return (await this.datastore.find()).filter(x => connectionHasPermission(x, loadedPermissions));
+  },
+
+  async getUsedEngines() {
+    const storage = require('./storage');
+
+    const storageEngines = await storage.getUsedEngines();
+    if (storageEngines) {
+      return storageEngines;
+    }
+    if (portalConnections) {
+      return _.uniq(_.compact(portalConnections.map(x => x.engine)));
+    }
+    return _.uniq((await this.datastore.find()).map(x => x.engine));
   },
 
   test_meta: true,
@@ -304,6 +335,18 @@ module.exports = {
     return res;
   },
 
+  importFromArray(list) {
+    this.datastore.transformAll(connections => {
+      const mapped = connections.map(x => {
+        const found = list.find(y => y._id == x._id);
+        if (found) return found;
+        return x;
+      });
+      return [...mapped, ...list.filter(x => !connections.find(y => y._id == x._id))];
+    });
+    socket.emitChanged('connection-list-changed');
+  },
+
   async checkUnsavedConnectionsLimit() {
     if (!this.datastore) {
       return;
@@ -333,7 +376,7 @@ module.exports = {
   update_meta: true,
   async update({ _id, values }, req) {
     if (portalConnections) return;
-    testConnectionPermission(_id, req);
+    await testConnectionPermission(_id, req);
     const res = await this.datastore.patch(_id, values);
     socket.emitChanged('connection-list-changed');
     return res;
@@ -350,7 +393,7 @@ module.exports = {
   updateDatabase_meta: true,
   async updateDatabase({ conid, database, values }, req) {
     if (portalConnections) return;
-    testConnectionPermission(conid, req);
+    await testConnectionPermission(conid, req);
     const conn = await this.datastore.get(conid);
     let databases = (conn && conn.databases) || [];
     if (databases.find(x => x.name == database)) {
@@ -368,7 +411,7 @@ module.exports = {
   delete_meta: true,
   async delete(connection, req) {
     if (portalConnections) return;
-    testConnectionPermission(connection, req);
+    await testConnectionPermission(connection, req);
     const res = await this.datastore.remove(connection._id);
     socket.emitChanged('connection-list-changed');
     return res;
@@ -379,6 +422,13 @@ module.exports = {
     const volatile = volatileConnections[conid];
     if (volatile) {
       return volatile;
+    }
+
+    const cloudMatch = conid.match(/^cloud\:\/\/(.+)\/(.+)$/);
+    if (cloudMatch) {
+      const { loadCachedCloudConnection } = require('../utility/cloudIntf');
+      const conn = await loadCachedCloudConnection(cloudMatch[1], cloudMatch[2]);
+      return conn;
     }
 
     const storage = require('./storage');
@@ -403,7 +453,7 @@ module.exports = {
         _id: '__model',
       };
     }
-    testConnectionPermission(conid, req);
+    await testConnectionPermission(conid, req);
     return this.getCore({ conid, mask: true });
   },
 
@@ -419,6 +469,22 @@ module.exports = {
       databaseFile,
       singleDatabase: true,
       defaultDatabase: `${file}.sqlite`,
+    });
+    return res;
+  },
+
+  newDuckdbDatabase_meta: true,
+  async newDuckdbDatabase({ file }) {
+    const duckdbDir = path.join(filesdir(), 'duckdb');
+    if (!(await fs.exists(duckdbDir))) {
+      await fs.mkdir(duckdbDir);
+    }
+    const databaseFile = path.join(duckdbDir, `${file}.duckdb`);
+    const res = await this.save({
+      engine: 'duckdb@dbgate-plugin-duckdb',
+      databaseFile,
+      singleDatabase: true,
+      defaultDatabase: `${file}.duckdb`,
     });
     return res;
   },
@@ -465,40 +531,40 @@ module.exports = {
       socket.emit('got-volatile-token', { strmid, savedConId: conid, volatileConId: volatile._id });
       return { success: true };
     } catch (err) {
-      logger.error(extractErrorLogData(err), 'Error getting DB token');
+      logger.error(extractErrorLogData(err), 'DBGM-00100 Error getting DB token');
       return { error: err.message };
     }
   },
 
   dbloginAuthToken_meta: true,
-  async dbloginAuthToken({ amoid, code, conid, redirectUri, sid }) {
+  async dbloginAuthToken({ amoid, code, conid, redirectUri, sid }, req) {
     try {
       const connection = await this.getCore({ conid });
       const driver = requireEngineDriver(connection);
       const accessToken = await driver.getAuthTokenFromCode(connection, { code, redirectUri, sid });
       const volatile = await this.saveVolatile({ conid, accessToken });
       const authProvider = getAuthProviderById(amoid);
-      const resp = await authProvider.login(null, null, { conid: volatile._id });
+      const resp = await authProvider.login(null, null, { conid: volatile._id }, req);
       return resp;
     } catch (err) {
-      logger.error(extractErrorLogData(err), 'Error getting DB token');
+      logger.error(extractErrorLogData(err), 'DBGM-00101 Error getting DB token');
       return { error: err.message };
     }
   },
 
   dbloginAuth_meta: true,
-  async dbloginAuth({ amoid, conid, user, password }) {
+  async dbloginAuth({ amoid, conid, user, password }, req) {
     if (user || password) {
       const saveResp = await this.saveVolatile({ conid, user, password, test: true });
       if (saveResp.msgtype == 'connected') {
-        const loginResp = await getAuthProviderById(amoid).login(user, password, { conid: saveResp._id });
+        const loginResp = await getAuthProviderById(amoid).login(user, password, { conid: saveResp._id }, req);
         return loginResp;
       }
       return saveResp;
     }
 
     // user and password is stored in connection, volatile connection is not needed
-    const loginResp = await getAuthProviderById(amoid).login(null, null, { conid });
+    const loginResp = await getAuthProviderById(amoid).login(null, null, { conid }, req);
     return loginResp;
   },
 

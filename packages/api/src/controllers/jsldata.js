@@ -8,6 +8,9 @@ const getJslFileName = require('../utility/getJslFileName');
 const JsonLinesDatastore = require('../utility/JsonLinesDatastore');
 const requirePluginFunction = require('../utility/requirePluginFunction');
 const socket = require('../utility/socket');
+const crypto = require('crypto');
+const dbgateApi = require('../shell');
+const { ChartProcessor } = require('dbgate-datalib');
 
 function readFirstLine(file) {
   return new Promise((resolve, reject) => {
@@ -291,6 +294,28 @@ module.exports = {
         label: m.label,
         data: data.map(d => d[m.field] || 0),
       })),
+    };
+  },
+
+  downloadJslData_meta: true,
+  async downloadJslData({ uri }) {
+    const jslid = crypto.randomUUID();
+    await dbgateApi.download(uri, { targetFile: getJslFileName(jslid) });
+    return { jslid };
+  },
+
+  buildChart_meta: true,
+  async buildChart({ jslid, definition }) {
+    const datastore = new JsonLinesDatastore(getJslFileName(jslid));
+    const processor = new ChartProcessor(definition ? [definition] : undefined);
+    await datastore.enumRows(row => {
+      processor.addRow(row);
+      return true;
+    });
+    processor.finalize();
+    return {
+      charts: processor.charts,
+      columns: processor.availableColumns,
     };
   },
 };

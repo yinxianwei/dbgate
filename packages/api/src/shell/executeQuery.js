@@ -14,6 +14,8 @@ const logger = getLogger('execQuery');
  * @param {string} [options.sql] - SQL query
  * @param {string} [options.sqlFile] - SQL file
  * @param {boolean} [options.logScriptItems] - whether to log script items instead of whole script
+ * @param {boolean} [options.useTransaction] - run query in transaction
+ * @param {boolean} [options.skipLogging] - whether to skip logging
  */
 async function executeQuery({
   connection = undefined,
@@ -22,23 +24,27 @@ async function executeQuery({
   sql,
   sqlFile = undefined,
   logScriptItems = false,
+  skipLogging = false,
+  useTransaction,
 }) {
-  if (!logScriptItems) {
-    logger.info({ sql: getLimitedQuery(sql) }, `Execute query`);
+  if (!logScriptItems && !skipLogging) {
+    logger.info({ sql: getLimitedQuery(sql) }, `DBGM-00048 Execute query`);
   }
 
   if (!driver) driver = requireEngineDriver(connection);
   const dbhan = systemConnection || (await connectUtility(driver, connection, 'script'));
 
   if (sqlFile) {
-    logger.debug(`Loading SQL file ${sqlFile}`);
+    logger.debug(`DBGM-00049 Loading SQL file ${sqlFile}`);
     sql = await fs.readFile(sqlFile, { encoding: 'utf-8' });
   }
 
   try {
-    logger.debug(`Running SQL query, length: ${sql.length}`);
+    if (!skipLogging) {
+      logger.debug(`DBGM-00050 Running SQL query, length: ${sql.length}`);
+    }
 
-    await driver.script(dbhan, sql, { logScriptItems });
+    await driver.script(dbhan, sql, { logScriptItems, useTransaction });
   } finally {
     if (!systemConnection) {
       await driver.close(dbhan);

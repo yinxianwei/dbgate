@@ -14,12 +14,16 @@ const volatilePackages = [
   'ioredis',
   'node-redis-dump2',
   'better-sqlite3',
+  'libsql',
   '@azure/cosmos',
   '@aws-sdk/rds-signer',
   'activedirectory2',
   'axios',
   'ssh2',
   'wkx',
+  '@duckdb/node-api',
+  '@mongosh/browser-runtime-electron',
+  '@mongosh/service-provider-node-driver',
 ];
 
 module.exports = volatilePackages;

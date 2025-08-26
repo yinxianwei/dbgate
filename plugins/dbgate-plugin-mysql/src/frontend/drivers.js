@@ -178,7 +178,8 @@ const mysqlDriverBase = {
       : mysqlSplitterOptions,
 
   readOnlySessions: true,
-  supportsDatabaseDump: true,
+  supportsDatabaseBackup: true,
+  supportsDatabaseRestore: true,
   authTypeLabel: 'Connection mode',
   defaultAuthTypeName: 'hostPort',
   defaultSocketPath: '/var/run/mysqld/mysqld.sock',
@@ -199,11 +200,192 @@ const mysqlDriverBase = {
       },
     ];
   },
+  getCliConnectionArgs(connection, externalTools) {
+    const args = [`--user=${connection.user}`, `--password=${connection.password}`, `--host=${connection.server}`];
+    if (connection.port) {
+      args.push(`--port=${connection.port}`);
+    }
+    if (externalTools.mysqlPlugins) {
+      args.push(`--plugin-dir=${externalTools.mysqlPlugins}`);
+    }
+    if (connection.server == 'localhost') {
+      args.push(`--protocol=tcp`);
+    }
+    return args;
+  },
+  backupDatabaseCommand(connection, settings, externalTools) {
+    const { outputFile, database, skippedTables, options } = settings;
+    const command = externalTools.mysqldump || 'mysqldump';
+    const args = this.getCliConnectionArgs(connection, externalTools);
+    args.push(`--result-file=${outputFile}`);
+    args.push('--verbose');
+    for (const table of skippedTables) {
+      args.push(`--ignore-table=${database}.${table.pureName}`);
+    }
+    if (options.noData) {
+      args.push('--no-data');
+    }
+    if (options.noStructure) {
+      args.push('--no-create-info');
+    }
+    if (options.includeEvents !== false && !options.noStructure) {
+      args.push('--events');
+    }
+    if (options.includeRoutines !== false && !options.noStructure) {
+      args.push('--routines');
+    }
+    if (options.includeTriggers !== false && !options.noStructure) {
+      args.push('--triggers');
+    }
+    if (options.force) {
+      args.push('--force');
+    }
+    if (options.lockTables) {
+      args.push('--lock-tables');
+    }
+    if (options.skipLockTables) {
+      args.push('--skip-lock-tables');
+    }
+    if (options.singleTransaction) {
+      args.push('--single-transaction');
+    }
+    if (options.customArgs?.trim()) {
+      const customArgs = options.customArgs.split(/\s+/).filter(arg => arg.trim() != '');
+      args.push(...customArgs);
+    }
+    if (options.createDatabase) {
+      args.push('--databases', database);
+      if (options.dropDatabase) {
+        args.push('--add-drop-database');
+      }
+    } else {
+      args.push(database);
+    }
+    return { command, args };
+  },
+  restoreDatabaseCommand(connection, settings, externalTools) {
+    const { inputFile, database } = settings;
+    const command = externalTools.mysql || 'mysql';
+    const args = this.getCliConnectionArgs(connection, externalTools);
+    if (database) {
+      args.push(database);
+    }
+    return { command, args, stdinFilePath: inputFile };
+  },
+  transformNativeCommandMessage(message) {
+    if (message.message?.startsWith('--')) {
+      if (message.message.startsWith('-- Retrieving table structure for table')) {
+        return {
+          ...message,
+          severity: 'info',
+          message: message.message.replace('-- Retrieving table structure for table', 'Processing table'),
+        };
+      } else {
+        return {
+          ...message,
+          severity: 'debug',
+          message: message.message.replace('-- ', ''),
+        };
+      }
+    }
+    return message;
+  },
+  getNativeOperationFormArgs(operation) {
+    if (operation == 'backup') {
+      return [
+        {
+          type: 'checkbox',
+          label: 'No data (dump only structure)',
+          name: 'noData',
+          default: false,
+        },
+        {
+          type: 'checkbox',
+          label: 'No structure (dump only data)',
+          name: 'noStructure',
+          default: false,
+        },
+        {
+          type: 'checkbox',
+          label: 'Force (ignore all errors)',
+          name: 'force',
+          default: false,
+        },
+        {
+          type: 'checkbox',
+          label: 'Backup events',
+          name: 'includeEvents',
+          default: true,
+          disabledFn: values => values.noStructure,
+        },
+        {
+          type: 'checkbox',
+          label: 'Backup routines',
+          name: 'includeRoutines',
+          default: true,
+          disabledFn: values => values.noStructure,
+        },
+        {
+          type: 'checkbox',
+          label: 'Backup triggers',
+          name: 'includeTriggers',
+          default: true,
+          disabledFn: values => values.noStructure,
+        },
+        {
+          type: 'checkbox',
+          label: 'Lock tables',
+          name: 'lockTables',
+          default: false,
+          disabledFn: values => values.skipLockTables || values.singleTransaction,
+        },
+        {
+          type: 'checkbox',
+          label: 'Skip lock tables',
+          name: 'skipLockTables',
+          default: false,
+          disabledFn: values => values.lockTables || values.singleTransaction,
+        },
+        {
+          type: 'checkbox',
+          label: 'Single transaction',
+          name: 'singleTransaction',
+          default: false,
+          disabledFn: values => values.lockTables || values.skipLockTables,
+        },
+        {
+          type: 'checkbox',
+          label: 'Create database',
+          name: 'createDatabase',
+          default: false,
+        },
+        {
+          type: 'checkbox',
+          label: 'Drop database before import',
+          name: 'dropDatabase',
+          default: false,
+          disabledFn: values => !values.createDatabase,
+        },
+        {
+          type: 'text',
+          label: 'Custom arguments',
+          name: 'customArgs',
+        },
+      ];
+    }
+    return null;
+  },
+
+  adaptDataType(dataType) {
+    if (dataType?.toLowerCase() == 'money') return 'decimal(15,2)';
+    return dataType;
+  },
 };
 
 /** @type {import('dbgate-types').EngineDriver} */
 const mysqlDriver = {
   ...mysqlDriverBase,
+  supportsServerSummary: true,
   dialect: mysqlDialect,
   engine: 'mysql@dbgate-plugin-mysql',
   title: 'MySQL',
@@ -244,6 +426,7 @@ const mariaDbDialect = {
 /** @type {import('dbgate-types').EngineDriver} */
 const mariaDriver = {
   ...mysqlDriverBase,
+  supportsServerSummary: true,
   dialect: mariaDbDialect,
   engine: 'mariadb@dbgate-plugin-mysql',
   title: 'MariaDB',

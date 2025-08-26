@@ -22,6 +22,12 @@
   import FormTablesSelect from './FormTablesSelect.svelte';
   import { findEngineDriver } from 'dbgate-tools';
   import AceEditor from '../query/AceEditor.svelte';
+  import { _t } from '../translations';
+  import { showModal } from '../modals/modalTools';
+  import InputTextModal from '../modals/InputTextModal.svelte';
+  import FormCheckboxField from '../forms/FormCheckboxField.svelte';
+  import { isProApp } from '../utility/proTools';
+  import FormTextField from '../forms/FormTextField.svelte';
 
   export let direction;
   export let storageTypeField;
@@ -40,14 +46,22 @@
     $values[storageTypeField] == 'jsldata'
       ? [{ value: 'jsldata', label: 'Query result data', directions: ['source'] }]
       : [
-          { value: 'database', label: 'Database', directions: ['source', 'target'] },
+          {
+            value: 'database',
+            label: _t('common.database', { defaultMessage: 'Database' }),
+            directions: ['source', 'target'],
+          },
           ...$extensions.fileFormats.map(format => ({
             value: format.storageType,
             label: `${format.name} files(s)`,
             directions: getFileFormatDirections(format),
           })),
-          { value: 'query', label: 'Query', directions: ['source'] },
-          { value: 'archive', label: 'Archive', directions: ['source', 'target'] },
+          { value: 'query', label: _t('common.query', { defaultMessage: 'Query' }), directions: ['source'] },
+          {
+            value: 'archive',
+            label: _t('common.archive', { defaultMessage: 'Archive (JSONL)' }),
+            directions: ['source', 'target'],
+          },
         ];
 
   $: storageType = $values[storageTypeField];
@@ -99,11 +113,18 @@
       <FormStyledButton
         value="New archive"
         on:click={() => {
-          values.update(x => ({
-            ...x,
-            [storageTypeField]: 'archive',
-            [archiveFolderField]: `import-${moment().format('YYYY-MM-DD-hh-mm-ss')}`,
-          }));
+          showModal(InputTextModal, {
+            header: 'Archive',
+            label: 'Name of new archive folder',
+            value: `import-${moment().format('YYYY-MM-DD-hh-mm-ss')}`,
+            onConfirm: value => {
+              values.update(x => ({
+                ...x,
+                [storageTypeField]: 'archive',
+                [archiveFolderField]: value,
+              }));
+            },
+          });
         }}
       />
     {/if}
@@ -115,16 +136,53 @@
     label="Storage type"
   />
 
+  {#if format && isProApp()}
+    {#if direction == 'source'}
+      <FormCheckboxField
+        name={`importFromZipFile`}
+        label={_t('importExport.importFromZipFile', { defaultMessage: 'Import from ZIP file (in archive folder)' })}
+      />
+      {#if $values.importFromZipFile}
+        <FormArchiveFolderSelect
+          label={_t('importExport.importFromZipArchive', { defaultMessage: 'Input ZIP archive' })}
+          name={archiveFolderField}
+          additionalFolders={_.compact([$values[archiveFolderField]])}
+          zipFilesOnly
+        />
+      {/if}
+    {/if}
+    {#if direction == 'target'}
+      <FormCheckboxField
+        name={`exportToZipFile`}
+        label={_t('importExport.exportToZipFile', { defaultMessage: 'Export to ZIP file' })}
+      />
+      {#if $values.exportToZipFile}
+        <FormCheckboxField
+          name={`createZipFileInArchive`}
+          label={_t('importExport.createZipFileInArchive', { defaultMessage: 'Create ZIP file in archive' })}
+        />
+
+        <FormTextField
+          label={_t('importExport.exportToZipArchive', { defaultMessage: 'Output ZIP archive' })}
+          name={archiveFolderField}
+          placeholder={'zip-archive-yyyy-mm-dd-hh-mm-ss.zip'}
+        />
+      {/if}
+    {/if}
+  {/if}
+
   {#if storageType == 'database' || storageType == 'query'}
     <FormConnectionSelect name={connectionIdField} label="Server" {direction} />
-    <FormDatabaseSelect conidName={connectionIdField} name={databaseNameField} label="Database" />
+    {#if !$connectionInfo?.singleDatabase}
+      <FormDatabaseSelect conidName={connectionIdField} name={databaseNameField} label="Database" />
+    {/if}
   {/if}
   {#if storageType == 'database'}
     <FormSchemaSelect
       conidName={connectionIdField}
       databaseName={databaseNameField}
       name={schemaNameField}
-      label="Schema"
+      label={_t('common.schema', { defaultMessage: 'Schema' })}
     />
     {#if tablesField}
       <FormTablesSelect
@@ -132,12 +190,15 @@
         schemaName={schemaNameField}
         databaseName={databaseNameField}
         name={tablesField}
-        label="Tables / views / collections"
+        data-testid={direction == 'source'
+          ? 'SourceTargetConfig_tablesSelect_source'
+          : 'SourceTargetConfig_tablesSelect_target'}
+        label={_t('importExport.tablesViewsCollections', { defaultMessage: 'Tables / views / collections' })}
       />
     {/if}
   {/if}
   {#if storageType == 'query'}
-    <div class="label">Query</div>
+    <div class="label">{_t('common.query', { defaultMessage: 'Query' })}</div>
     <div class="sqlwrap">
       {#if $values.sourceQueryType == 'json'}
         <AceEditor value={$values.sourceQuery} on:input={e => setFieldValue('sourceQuery', e.detail)} mode="json" />
@@ -152,14 +213,20 @@
       label="Archive folder"
       name={archiveFolderField}
       additionalFolders={_.compact([$values[archiveFolderField]])}
+      allowCreateNew={direction == 'target'}
     />
   {/if}
 
-  {#if storageType == 'archive' && direction == 'source'}
-    <FormArchiveFilesSelect label="Source files" folderName={$values[archiveFolderField]} name={tablesField} />
+  {#if direction == 'source' && (storageType == 'archive' || $values.importFromZipFile)}
+    <FormArchiveFilesSelect
+      label={_t('importExport.sourceFiles', { defaultMessage: 'Source files' })}
+      folderName={$values[archiveFolderField]}
+      name={tablesField}
+      filterExtension={format?.extension}
+    />
   {/if}
 
-  {#if format && direction == 'source'}
+  {#if format && direction == 'source' && !$values.importFromZipFile}
     <FilesInput {setPreviewSource} />
   {/if}
 
